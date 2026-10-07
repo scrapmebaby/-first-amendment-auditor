@@ -1,0 +1,22 @@
+{
+  "name": "first-amendment-auditor",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --directory dist",
+    "test": "node tests/core.test.js && node tests/campaign.test.js && node tests/dialogue.test.js",
+    "check": "node --check dist/app.js && node --check dist/world.js && node --check dist/core.js && node --check dist/three-world.js && node --check dist/characters.js && node --check dist/cast-studio.js && node --check dist/dialogue.js",
+    "build": "python3 build.py",
+    "format": "prettier --write \"dist/*.js\" \"dist/*.css\" \"tests/*.{js,cjs}\"",
+    "format:check": "prettier --check \"dist/*.js\" \"dist/*.css\" \"tests/*.{js,cjs}\""
+  },
+  "dependencies": {
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "prettier": "3.6.2"
+  },
+  "license": "SEE LICENSE IN LICENSE"
+}

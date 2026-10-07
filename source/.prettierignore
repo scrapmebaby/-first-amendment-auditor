@@ -1,0 +1,6 @@
+node_modules/
+dist/game.bundle.js
+dist/style.min.css
+1st-amendment-auditor.html
+licenses/
+dist/licenses/

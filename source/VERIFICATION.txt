@@ -1,0 +1,131 @@
+Historical v0.1/v0.2 checks (before Three.js migration)
+Verification — 7 October 2026
+
+PASS: JavaScript syntax checks for every application module.
+PASS: Six core tests: save validation, purchases/credit limits, short/music clips,
+      publication accounting and deduplication, crew overhead, civil claims.
+PASS: Chromium with software WebGPU: native pipeline initializes without validation errors.
+PASS: Browser film -> local playable video -> edit -> publish, gear and mask purchases,
+      reload/save restoration, weather selection, desktop and 390px mobile layout.
+PASS: Scripted encounter test: police arrival, filmed arrest escort, incident report,
+      claim filing, JSON save import, anxious local crying, thrown paper cup.
+      Auditor charge demands and exaggerated legal dialogue are retained in clips.
+PASS: Decoded locally recorded video frame visually inspected; scene and captions present.
+PASS: CPU/Canvas compatibility renderer exercised in earlier browser runs.
+PASS: Standalone HTML builds with all scripts, styles, fonts and font licenses embedded.
+
+Visual QA used native WebGPU canvas readback for the scene because this managed
+Chromium software Vulkan compositor corrupts direct screenshots of a live WebGPU
+surface. UI screenshots combine that verified frame with the normal live UI and
+weather overlay. Recorded video uses a separate Canvas surface built from the same
+scene primitives, avoiding the affected WebGPU-to-video copy path.
+
+Not verified: physical GPU performance across browsers/devices; file:// startup
+(managed Chromium blocks local-file navigation). Local HTTP startup was tested.
+No hosted deployment: required Sites source-workflow helper is absent.
+
+PASS: Mace integration: no automatic use for words alone; physical contact triggers
+      one equipped charge, recorded spray/retreat dialogue, and the civilian
+      charge/arrest sequence remains available after retaliatory use.
+
+Campaign v0.2 verification
+PASS: All 12 pure core/campaign tests, including save migration, corruption rejection,
+      whole-balance loan repricing, principal-vs-profit accounting, home cameras and
+      mask adaptation, repair costs, demonetization, service work, victory, and a
+      recovery route when credit is exhausted and the camera is destroyed.
+PASS: Browser campaign: borrow twice, buy CCTV, trigger two home incidents, review
+      a masked visitor reconstruction, lose equipment, receive an automatic police
+      response, write a statement while the suspect escapes, and repair the camera.
+PASS: Browser campaign: publish at the monetization cutoff, leave auditing, perform
+      nine useful tasks across three paid shifts, choose the ending, and reload the win.
+PASS: Severe-assault browser case: evidence and police call precede hospital transfer;
+      treatment costs $65 and health returns to 100.
+PASS: Existing native WebGPU browser smoke suite still passes filming, recorded-video
+      playback, publication, purchases, weather, saved-state reload and mobile layout.
+VISUAL QA: Ending dialog and reconstructed home CCTV still inspected. The still uses
+      the original 3D town geometry; it is explicitly labeled as a reconstruction.
+
+
+Three.js v0.3 — 7 October 2026
+PASS: 12 core/campaign tests and module syntax checks.
+PASS: Native software WebGPU and software WebGL 2: perspective rendering, movement,
+      weather transitions, and no external asset/network requests.
+PASS: Browser film -> playable local video -> edit -> publish, purchases, reload,
+      rain selection, and 390px mobile layout.
+PASS: Encoded video downloaded and independently decoded with ffmpeg: actual 3D
+      world and dialogue captions visible. Capture now stages complete CPU-backed
+      frames and explicitly requests a stream frame after painting, avoiding empty
+      intermediate frames and affected GPU-canvas copy paths.
+PASS: npm audit reports zero known dependency vulnerabilities for the pinned tree.
+      This is a dependency advisory check, not a full application security audit.
+
+Rendering now uses Three.js 0.186.1 with perspective depth, PBR, shadow maps,
+procedural sky/clouds, fog and optional shadow-aware volumetric scattering/bloom.
+Light shafts use a distant spotlight approximating sun illumination. There are
+no real volumetric cloud simulations, ray-traced reflections or imported assets.
+
+WebGPU software runs initially saturated the device with queued frames. Bounded
+GPU work fixed the buildup; the WebGL path also uses nonblocking fences. Browser
+frame rates in this software-rendering environment are not representative of
+physical GPUs. Both visual quality settings need broader real-device profiling.
+Direct file:// remains unverified due to managed Chromium policy; localhost tested.
+New assistance/character/fly/bathroom mechanics are not part of this visual release.
+PASS: v0.3 campaign regression in Balanced mode: home evidence, loans, destroyed
+      equipment, police statement/escape, repairs, demonetization, nine service
+      tasks, explicit victory and saved ending reload.
+PASS: WebGL 2 atmospheric-to-balanced quality switching without page errors.
+PASS: Both GPU APIs disabled: original Canvas renderer boots, moves and changes
+      weather without page errors. Unsupported graphics APIs are preflighted.
+
+
+Original cast v0.4 — 7 October 2026
+PASS: Twelve economy/save/campaign tests; syntax checks for new character modules.
+PASS: 19 distinct rigs instantiated in the starting town (18 locals + player).
+PASS: Close-up viewer selection, rotation controls, facial close-up, seven pose
+      choices, close/reopen, Escape dismissal, mobile width and reload.
+VISUAL QA: Full-figure cast, differentiated head shapes, clothes and props, crew
+      shirt lettering, expressive angry eyebrows/mouth and crying pose inspected.
+PASS: Native WebGPU smoke: filming, local video playback, publication, mask/crew
+      purchases, weather, save reload and mobile layout with the new characters.
+No stock character meshes, outside textures, remote downloads, or additional npm
+runtime dependencies were introduced. Models are authored procedural geometry.
+Physical-device frame-rate profiling remains outstanding; QA uses software GPUs.
+
+QA harness correction: scripted encounter rolls now use a bounded diagnostic
+control in auditorDebug instead of replacing global Math.random. Three.js uses
+Math.random for UUIDs; replacing it with a constant caused renderer cache-ID
+collisions in the old harness. Ordinary play continues to use normal randomness.
+All 23 character-viewer entries were selected successfully in the final cast check.
+PASS: Final native WebGPU encounter regression with the skinned rigs: police
+      arrival, filmed arrest/escort, claim filing, playable video, crying and
+      thrown-cup behavior; no page or renderer errors.
+PASS: All 23 viewer entries and expressions after consolidating figures into
+      skinned meshes. Rigid bone weights retain the original faceted art style.
+
+
+v0.5 — 2026-10-07: local saves, language, original contextual dialogue
+PASS: npm test — existing core/campaign checks plus 200-line bank uniqueness,
+      no repeats before exhaustion or across refill boundaries, contextual
+      routing, clean-language coverage and old-save preference migration.
+PASS: npm run check and standalone build.
+PASS: language-browser.cjs — clean default, explicit toggle, preference reload,
+      old-save import, clean/explicit shop labels, agreement navigation,
+      delayed response and recorded auditor event metadata (Canvas fallback).
+License/EULA: full texts bundled in standalone and copied into dist with
+      third-party notices. Custom source-available/no-sale terms; not OSI open
+      source. No legal enforceability assurance or platform age rating claimed.
+Limits: dialogue is captioned, session anti-repeat history resets on reload;
+      saved videos retain their original captions. No cloud save/account added.
+
+NOTE: Native WebGPU encounter run on the software Vulkan adapter exceeded the
+      existing 50-second wall timeout while the simulation was still progressing
+      (29 recorded seconds, police responding, no renderer error). This run does
+      not establish a native-WebGPU pass for v0.5 or a hardware performance result.
+PASS: Final v0.5 build, encounters.cjs --canvas: police arrival, filmed arrest
+      escort, civil claim, playable recorded video, anxious crying, thrown cup;
+      no page errors. Delayed dialogue does not block the encounter outcomes.
+
+Formatting/minification update: npm test, npm run check, npm run format:check,
+standalone build, and language-browser.cjs passed. Standalone fonts/styles/script
+embedding and absence of source maps/workspace paths in JS bundle checked.
+Production CSS now uses generated style.min.css. No gameplay changes intended.

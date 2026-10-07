@@ -1,0 +1,44 @@
+FREE GITHUB PAGES SETUP — NO BUILD REQUIRED
+
+1. Use a pseudonymous GitHub Free account. GitHub needs an email you can
+   actually receive verification and recovery messages at; a separate free
+   mailbox is sufficient. Do not use an invented, unreachable address.
+2. Leave your real name and identifying profile details out. In GitHub
+   Settings > Emails, enable Keep my email addresses private and Block
+   command line pushes that expose my email. If using local git, set the
+   commit name to your pseudonym and commit email to the exact noreply
+   address GitHub shows. Privacy changes do not rewrite old commit history.
+3. Create a NEW PUBLIC repository, such as first-amendment-auditor.
+   Do not select another license template: the included LICENSE is used.
+4. Extract 1st-amendment-auditor-hosting.zip on your computer. Upload its
+   CONTENTS to the repository root using Add file > Upload files. index.html
+   must be at the root, not inside another enclosing folder. Commit to main.
+5. Repository Settings > Pages > Build and deployment:
+   Source: Deploy from a branch. Branch: main. Folder: / (root). Save.
+6. Wait for GitHub to show the published URL. It will normally be:
+   https://YOUR-PSEUDONYM.github.io/first-amendment-auditor/
+   Use that free address. A custom domain is unnecessary.
+
+The hosting package has a prebuilt index.html, license/player agreement,
+third-party notices and a source/ directory containing the editable project.
+No npm, Python, paid hosting plan, database, OAuth configuration, API key,
+player login or email service is required to host or play it.
+
+The game runs in each visitor's browser. Saves stay in that browser;
+Settings > Export save backs up progress. Video takes download separately.
+Hosting changes and clearing browser storage can lose saves: export first.
+
+Project credit uses the game title and project contributors, not a personal
+name or contact email. Dependency authors retain required license credits.
+GitHub displays the account username and commit identity. A pseudonym keeps
+real-name attribution out of the public project but is not an anonymity
+promise against the hosting provider.
+
+GitHub Pages is currently free for public repositories on GitHub Free,
+subject to its terms and usage limits. There is no running game server to
+maintain. Keep access to the account for occasional browser fixes or hosting
+changes; no provider can promise free hosting forever.
+
+Official instructions:
+https://docs.github.com/en/pages/getting-started-with-github-pages/creating-a-github-pages-site
+https://docs.github.com/en/account-and-profile/how-tos/email-preferences/setting-your-commit-email-address
