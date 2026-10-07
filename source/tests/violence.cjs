@@ -27,6 +27,7 @@ const path = require('node:path');
     const s = await p.evaluate(() => auditorDebug.snapshot());
     s.health = 35;
     s.campaign.reputation = 55;
+    await p.click('#menuToggle');
     await p.click('#settings');
     await p.setInputFiles('#file', {
       name: 'injury-fixture.json',
@@ -34,15 +35,15 @@ const path = require('node:path');
       buffer: Buffer.from(JSON.stringify(s)),
     });
     await p.waitForFunction(() => !document.querySelector('#modal').open);
-    await p.click('#film');
+    await p.keyboard.press('f');
     for (let i = 0; i < 3; i++) {
-      await p.click('#engage');
+      await p.keyboard.press('Space');
       await p.waitForTimeout(1400);
     }
     await p.evaluate(() => auditorDebug.setEncounterRoll(0.2));
     for (let i = 0; i < 2; i++) {
       if (await p.evaluate(() => auditorDebug.snapshot().campaign.hospitals)) break;
-      await p.click('#engage');
+      await p.keyboard.press('Space');
       await p.waitForTimeout(1400);
     }
     await p.waitForFunction(() => auditorDebug.snapshot().campaign.hospitals === 1);

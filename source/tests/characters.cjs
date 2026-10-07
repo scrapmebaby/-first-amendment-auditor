@@ -31,6 +31,7 @@ const fs = require('node:fs'),
     await page.waitForFunction(() => window.auditorDebug);
     await page.waitForTimeout(500);
     assert.equal(await page.evaluate(() => auditorDebug.castCount), 19);
+    await page.click('#menuToggle');
     await page.click('#inspectLocal');
     await page.waitForFunction(() => !document.getElementById('castLoading'));
     assert.equal(await page.locator('#castName').textContent(), 'Pat');
@@ -73,6 +74,7 @@ const fs = require('node:fs'),
     await page.click('#closeModal');
     await page.waitForTimeout(250);
     assert.equal(await page.evaluate(() => document.querySelector('#modal').open), false);
+    await page.click('#menuToggle');
     await page.click('#inspectLocal');
     await page.waitForFunction(() => !document.getElementById('castLoading'));
     await page.setViewportSize({ width: 390, height: 844 });

@@ -56,6 +56,7 @@ const fs = require('node:fs'),
     await shot('preview-mirror.png');
     console.log('VIEW', await page.evaluate(() => auditorDebug.view()));
     assert.ok(await page.evaluate(() => auditorDebug.view().flies));
+    await page.click('#menuToggle');
     await page.click('[data-panel=shop]');
     await page.click('[data-buy=merchPress]');
     await page.click('[data-buy=clown]');

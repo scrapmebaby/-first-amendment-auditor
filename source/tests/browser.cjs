@@ -70,19 +70,20 @@ const path = require('node:path');
     Buffer.from((await page.evaluate(() => auditorDebug.captureFrame())).split(',')[1], 'base64'),
   );
   assert.ok(await page.evaluate(() => auditorDebug.target));
-  await page.click('#film');
+  await page.keyboard.press('f');
   await page.waitForFunction(
     () => document.getElementById('recordTime').textContent >= '00:04',
     {},
     { timeout: 30000 },
   );
-  await page.click('#engage');
-  await page.click('#film');
+  await page.keyboard.press('Space');
+  await page.keyboard.press('f');
   assert.equal(await page.evaluate(() => auditorDebug.snapshot().clips.length), 1);
   fs.writeFileSync(
     root + '/capture-canvas.png',
     Buffer.from((await page.evaluate(() => auditorDebug.recordedFrame())).split(',')[1], 'base64'),
   );
+  await page.click('#menuToggle');
   await page.click('[data-panel=editor]');
   await page.waitForSelector('video');
   await page.evaluate(async () => {
@@ -126,11 +127,13 @@ const path = require('node:path');
   await page.click('[id^=publish-]');
   assert.equal(await page.evaluate(() => auditorDebug.snapshot().published), 1);
   await page.click('#closeModal');
+  await page.click('#menuToggle');
   await page.click('[data-panel=shop]');
   await page.click('[data-buy=clown]');
   await page.click('[data-buy=crew]');
   assert.ok(await page.evaluate(() => auditorDebug.snapshot().gear.includes('crew')));
   await page.click('#closeModal');
+  await page.click('#menuToggle');
   await page.click('#settings');
   await page.selectOption('#weatherChoice', 'rain');
   await page.click('#closeModal');

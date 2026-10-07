@@ -31,12 +31,13 @@ const path = require('node:path');
     await page.goto('http://127.0.0.1:' + server.address().port);
     await page.waitForFunction(() => window.auditorDebug);
     await page.evaluate(() => auditorDebug.setEncounterRoll(0.45));
+    await page.click('#menuToggle');
     await page.click('[data-panel=shop]');
     await page.click('[data-buy=spray]');
     await page.click('#closeModal');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().spray), 3);
-    await page.click('#film');
-    await page.click('#engage');
+    await page.keyboard.press('f');
+    await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
     assert.equal(
       await page.evaluate(() => auditorDebug.snapshot().spray),
@@ -45,7 +46,7 @@ const path = require('node:path');
     );
     for (let i = 0; i < 5; i++) {
       if (await page.evaluate(() => auditorDebug.snapshot().spray < 3)) break;
-      await page.click('#engage');
+      await page.keyboard.press('Space');
       await page.waitForTimeout(1400);
     }
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().spray), 2);
@@ -56,14 +57,14 @@ const path = require('node:path');
     );
     await page.waitForTimeout(1800);
     await page.evaluate(() => auditorDebug.setEncounterRoll(0.1));
-    await page.click('#police');
+    await page.click('#quickPolice');
     await page.waitForFunction(() => auditorDebug.snapshot().pendingReport, {}, { timeout: 45000 });
     assert.equal(
       await page.evaluate(() => auditorDebug.snapshot().pendingReport.arrest),
       true,
       'Retaliatory mace does not prevent police from arresting the civilian',
     );
-    await page.click('#film');
+    await page.keyboard.press('f');
     const clip = await page.evaluate(() => auditorDebug.snapshot().clips[0]);
     assert.ok(clip.events.some((e) => e.event.includes('automatically maces')));
     assert.ok(clip.events.some((e) => e.event.includes('self-defense')));

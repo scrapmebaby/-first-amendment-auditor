@@ -40,3 +40,10 @@ Press V or First person to switch views; drag to look and use Q/R to turn.
 Find mirror walks you to a nearby live mirror. Purchased shirts, masks and
 flies appear in your reflection. Six mirror locations persist with each save.
 First-person and live mirrors require WebGPU or WebGL2.
+
+## Fullscreen and controllers (v0.8)
+
+The town fills your screen. Tab or Menu & objectives opens the pause menu.
+Use ⛶ for browser fullscreen where supported. Standard Xbox/PlayStation-style
+controllers use left stick to move, right stick to look in first-person, triggers
+to drive and Start/Options for menus. Full bindings appear in the menu.

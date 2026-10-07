@@ -43,13 +43,13 @@ const fs = require('node:fs');
   await page.goto('http://127.0.0.1:8081');
   await page.waitForFunction(() => window.auditorDebug);
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.45));
-  await page.click('#film');
+  await page.keyboard.press('f');
   for (let i = 0; i < 5; i++) {
-    await page.click('#engage');
+    await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
   }
   assert.ok(await page.evaluate(() => auditorDebug.snapshot().health < 100));
-  await page.click('#police');
+  await page.click('#quickPolice');
   assert.equal(await page.evaluate(() => auditorDebug.recording), true);
   await page
     .waitForFunction(() => auditorDebug.snapshot().pendingReport, {}, { timeout: 50000 })
@@ -68,20 +68,21 @@ const fs = require('node:fs');
       throw e;
     });
   assert.equal(await page.evaluate(() => auditorDebug.snapshot().pendingReport.arrest), true);
-  await page.click('#film');
+  await page.keyboard.press('f');
   const clip = await page.evaluate(() => auditorDebug.snapshot().clips[0]);
   assert.ok(clip.events.some((e) => /demands charges against the civilian/.test(e.event)));
   assert.ok(clip.events.some((e) => /AUDITOR:.*press charges/.test(e.event)));
   assert.ok(clip.events.some((e) => /exaggerated legal jargon/.test(e.event)));
   assert.ok(clip.events.some((e) => /Patrol car arrives/.test(e.event)));
   assert.ok(clip.events.some((e) => /escorted into patrol/.test(e.event)));
+  await page.click('#menuToggle');
   await page.click('[data-panel=editor]');
   await page.waitForSelector('video');
   await page.waitForFunction(() => document.querySelector('video')?.readyState >= 1);
   assert.ok((await page.evaluate(() => document.querySelector('video').videoWidth)) > 0);
   await page.screenshot({ path: root + '/preview-editor.png' });
   await page.click('#closeModal');
-  await page.click('#police');
+  await page.click('#quickPolice');
   await page.click('#claim');
   assert.equal(await page.evaluate(() => auditorDebug.snapshot().claims), 1);
   await page.click('#closeModal');
@@ -90,6 +91,7 @@ const fs = require('node:fs');
     const state = await page.evaluate(() => auditorDebug.snapshot());
     Object.assign(state, { x, z, health: 100, clips: [] });
     delete state.pendingReport;
+    await page.click('#menuToggle');
     await page.click('#settings');
     await page.setInputFiles('#file', {
       name: 'fixture.json',
@@ -105,15 +107,15 @@ const fs = require('node:fs');
   }
   await position(-22, -9);
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.6));
-  await page.click('#film');
+  await page.keyboard.press('f');
   for (let i = 0; i < 3; i++) {
-    await page.click('#engage');
+    await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
   }
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.2));
-  await page.click('#engage');
+  await page.keyboard.press('Space');
   await page.waitForTimeout(1500);
-  await page.click('#film');
+  await page.keyboard.press('f');
   assert.ok(
     await page.evaluate(() =>
       auditorDebug
@@ -124,15 +126,15 @@ const fs = require('node:fs');
   );
   await position(7, 10);
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.45));
-  await page.click('#film');
+  await page.keyboard.press('f');
   for (let i = 0; i < 4; i++) {
-    await page.click('#engage');
+    await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
   }
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.35));
-  await page.click('#engage');
+  await page.keyboard.press('Space');
   await page.waitForTimeout(1500);
-  await page.click('#film');
+  await page.keyboard.press('f');
   assert.ok(
     await page.evaluate(() =>
       auditorDebug

@@ -29,6 +29,7 @@ const http = require('node:http');
     async function fixture(change) {
       const s = await page.evaluate(() => auditorDebug.snapshot());
       change(s);
+      await page.click('#menuToggle');
       await page.click('#settings');
       await page.setInputFiles('#file', {
         name: 'career.json',
@@ -38,6 +39,7 @@ const http = require('node:http');
       await page.waitForFunction(() => !document.querySelector('#modal').open);
       await page.waitForTimeout(200);
     }
+    await page.click('#menuToggle');
     await page.click('#campaign');
     await page.click('#takeLoan');
     await page.click('#takeLoan');
@@ -45,6 +47,7 @@ const http = require('node:http');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().revenue), 0);
     await page.click('#closeModal');
     // High reputation and the next home-event timer provide a reproducible real simulation trigger.
+    await page.click('#menuToggle');
     await page.click('[data-panel=shop]');
     await page.click('[data-buy=security]');
     await page.click('#closeModal');
@@ -64,6 +67,7 @@ const http = require('node:http');
       await page.evaluate(() => auditorDebug.snapshot().campaign.homeIncidents[0].masked),
       true,
     );
+    await page.click('#menuToggle');
     await page.click('#campaign');
     await page.click('[data-evidence="2"]');
     await page.waitForSelector('#securityStill');
@@ -81,15 +85,15 @@ const http = require('node:http');
       delete s.pendingReport;
     });
     await page.evaluate(() => auditorDebug.setEncounterRoll(0.6));
-    await page.click('#film');
+    await page.keyboard.press('f');
     for (let i = 0; i < 3; i++) {
-      await page.click('#engage');
+      await page.keyboard.press('Space');
       await page.waitForTimeout(1350);
     }
     await page.evaluate(() => auditorDebug.setEncounterRoll(0.1));
     for (let i = 0; i < 3; i++) {
       if (await page.evaluate(() => auditorDebug.snapshot().campaign.condition === 0)) break;
-      await page.click('#engage');
+      await page.keyboard.press('Space');
       await page.waitForTimeout(1350);
     }
     await page.waitForFunction(() => auditorDebug.snapshot().campaign.condition === 0);
@@ -97,7 +101,7 @@ const http = require('node:http');
     await page.waitForFunction(
       () => document.querySelector('#police').textContent === 'Write report',
     );
-    await page.click('#police');
+    await page.click('#quickPolice');
     await page.waitForSelector('#statementText');
     await page.waitForFunction(
       () => auditorDebug.snapshot().pendingReport?.escaped,
@@ -115,6 +119,7 @@ const http = require('node:http');
       true,
     );
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().pendingReport.arrest), false);
+    await page.click('#menuToggle');
     await page.click('[data-panel=shop]');
     await page.click('#repairGear');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().campaign.condition), 100);
@@ -146,10 +151,12 @@ const http = require('node:http');
       s.nextId = 1000;
       delete s.pendingReport;
     });
+    await page.click('#menuToggle');
     await page.click('[data-panel=editor]');
     await page.click('#publish-999');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().campaign.demonetized), true);
     await page.click('#closeModal');
+    await page.click('#menuToggle');
     await page.click('#campaign');
     await page.click('#leaveCareer');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().campaign.career), 'service');
@@ -161,14 +168,16 @@ const http = require('node:http');
       s.driving = false;
     });
     for (let shift = 0; shift < 3; shift++) {
+      await page.click('#menuToggle');
       await page.click('#campaign');
       await page.click('[data-start-job="coffee"]');
       for (let task = 0; task < 3; task++) {
-        await page.click('#engage');
+        await page.keyboard.press('Space');
         await page.waitForTimeout(2800);
       }
     }
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().campaign.shifts), 3);
+    await page.click('#menuToggle');
     await page.click('#campaign');
     await page.click('#finishCareer');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().campaign.career), 'won');

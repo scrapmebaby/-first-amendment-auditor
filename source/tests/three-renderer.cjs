@@ -68,12 +68,14 @@ const path = require('node:path');
     await page.keyboard.up('s');
     const after = await page.evaluate(() => auditorDebug.snapshot());
     assert.ok(Math.hypot(before.x - after.x, before.z - after.z) > 0.2);
+    await page.click('#menuToggle');
     await page.click('#settings');
     await page.selectOption('#weatherChoice', 'golden');
     await page.click('#closeModal');
     await page.waitForTimeout(6000);
     await shot(canvas ? 'three-golden-canvas' : gpu ? 'three-golden-webgpu' : 'three-golden');
     if (!canvas) {
+      await page.click('#menuToggle');
       await page.click('#settings');
       await page.selectOption('#graphicsChoice', atmospheric ? 'balanced' : 'cinematic');
       await page.click('#closeModal');

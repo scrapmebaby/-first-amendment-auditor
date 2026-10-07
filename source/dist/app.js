@@ -1,3 +1,4 @@
+import { Controller } from './controller.js';
 import { MERCH, mirrorSites, viewMovement } from './appearance.js';
 import { Navigator, drive, slide } from './movement.js';
 import { Dialogue, language } from './dialogue.js';
@@ -53,6 +54,16 @@ const $ = (id) => document.getElementById(id),
       /[&<>"']/g,
       (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
     );
+// Move the existing controls into one accessible pause dialog; keep their handlers and IDs.
+for (const element of [
+  document.querySelector('header'),
+  document.querySelector('aside'),
+  document.querySelector('footer'),
+])
+  $('menuContents').append(element);
+const controller = new Controller();
+let padInput = controller.poll([]);
+const menuOpen = () => $('modal').open || $('gameMenu').open;
 const SAVE = 'first-amendment-auditor-v1';
 let s = fresh(),
   saveFailed = false,
@@ -918,6 +929,7 @@ async function showCast(index = 0) {
   }
 }
 function openModal(type, title, body) {
+  $('gameMenu').close();
   studio?.dispose();
   studio = null;
   $('modal').classList.toggle('cast-dialog', type === 'cast');
@@ -954,7 +966,8 @@ function closeModal() {
 $('modal').addEventListener('close', () => {
   studio?.dispose();
   studio = null;
-  if (capture.recorder?.state === 'paused' && !document.hidden) capture.recorder.resume();
+  if (capture.recorder?.state === 'paused' && !document.hidden && !menuOpen())
+    capture.recorder.resume();
   modalType = null;
   last = performance.now();
 });
@@ -1419,6 +1432,8 @@ function paperwork() {
 }
 
 function updateUI() {
+  $('hudStatus').textContent =
+    `${money(s.cash)} · Health ${Math.round(s.health)} · ${s.driving ? 'DRIVING' : 'ON FOOT'}`;
   const first = s.viewMode === 'first' && !!world.camera;
   $('viewToggle').textContent = first ? 'Overhead · V' : 'First person · V';
   $('viewToggle').disabled = !world.camera;
@@ -1586,6 +1601,122 @@ function updateUI() {
   }
   world.minimap($('map'), s, npcs);
 }
+function resetMotion() {
+  keys.clear();
+  destination = null;
+  s.moving = false;
+  s.carSpeed = 0;
+}
+function openGameMenu() {
+  resetMotion();
+  if ($('modal').open) closeModal();
+  updateUI();
+  if (capture.recorder?.state === 'recording') capture.recorder.pause();
+  $('gameMenu').showModal();
+  $('resumeGame').focus();
+}
+function toggleMenu() {
+  if ($('gameMenu').open) $('gameMenu').close();
+  else if ($('modal').open) closeModal();
+  else openGameMenu();
+}
+$('gameMenu').addEventListener('close', () => {
+  resetMotion();
+  if (!menuOpen() && !document.hidden && capture.recorder?.state === 'paused')
+    capture.recorder.resume();
+  last = performance.now();
+  if (!menuOpen()) $('game').focus({ preventScroll: true });
+});
+$('menuToggle').onclick = toggleMenu;
+$('resumeGame').onclick = toggleMenu;
+$('quickPolice').onclick = policeReport;
+$('quickSpray').onclick = () => spray();
+$('fullscreenToggle').onclick = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen)
+      await document.documentElement.requestFullscreen();
+    else notify('This browser keeps its own toolbar. The game already fills the available screen.');
+  } catch {
+    notify('Fullscreen is unavailable here. The game still fills your browser window.');
+  }
+};
+document.addEventListener('fullscreenchange', () =>
+  $('fullscreenToggle').setAttribute('aria-pressed', String(!!document.fullscreenElement)),
+);
+function controllerMenu(input) {
+  const dialog = $('modal').open ? $('modal') : $('gameMenu');
+  const options = [...dialog.querySelectorAll('button, a[href], select, input, textarea')].filter(
+    (e) => !e.disabled && e.getClientRects().length,
+  );
+  const current = document.activeElement;
+  const index = options.indexOf(current);
+  if (input.pressed[1]) {
+    if ($('modal').open) openGameMenu();
+    else toggleMenu();
+    return;
+  }
+  if (input.pressed[12] || input.pressed[13]) {
+    const next = options[(index + (input.pressed[12] ? -1 : 1) + options.length) % options.length];
+    next?.focus();
+    next?.scrollIntoView({ block: 'nearest' });
+  }
+  if (current?.tagName === 'SELECT' && (input.pressed[14] || input.pressed[15])) {
+    current.selectedIndex = clamp(
+      current.selectedIndex + (input.pressed[14] ? -1 : 1),
+      0,
+      current.options.length - 1,
+    );
+    current.dispatchEvent(new Event('change', { bubbles: true }));
+  } else if (input.pressed[0] && options.includes(current)) current.click();
+}
+function pollController(dt) {
+  let pads = [];
+  try {
+    pads = window.navigator.getGamepads?.() || [];
+  } catch {
+    /* Embedded browsers can deny gamepad access. */
+  }
+  const wasConnected = padInput.connected;
+  padInput = controller.poll(pads, !document.hidden && document.hasFocus());
+  if (wasConnected && !padInput.connected) {
+    resetMotion();
+    notify('Controller disconnected. Keyboard and touch controls are still available.');
+  }
+  $('controllerStatus').textContent = padInput.connected
+    ? 'Controller · Start / Options: menu'
+    : 'Keyboard / touch';
+  if (padInput.pressed[9]) {
+    toggleMenu();
+    return;
+  }
+  if (menuOpen()) {
+    controllerMenu(padInput);
+    padInput = {
+      ...padInput,
+      x: 0,
+      y: 0,
+      gas: 0,
+      reverse: 0,
+      lookX: 0,
+      lookY: 0,
+      sprint: false,
+      brake: false,
+    };
+    return;
+  }
+  if (padInput.pressed[8]) toggleView();
+  if (padInput.pressed[0]) engage();
+  if (padInput.pressed[2]) toggleFilm();
+  if (padInput.pressed[3]) car();
+  if (padInput.pressed[4]) spray();
+  if (padInput.pressed[5]) policeReport();
+  if (s.viewMode === 'first') {
+    const yaw = s.lookYaw - padInput.lookX * dt * 2.2;
+    s.lookYaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+    s.lookPitch = clamp(s.lookPitch - padInput.lookY * dt * 1.5, -0.85, 0.85);
+  }
+}
 let mirrorGoal = null;
 function toggleView() {
   if (!world.camera) {
@@ -1659,10 +1790,13 @@ function move(dt) {
   }
   let dx =
       (keys.has('d') || keys.has('ArrowRight') ? 1 : 0) -
-      (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0),
+      (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0) +
+      padInput.x,
     dz =
       (keys.has('s') || keys.has('ArrowDown') ? 1 : 0) -
-      (keys.has('w') || keys.has('ArrowUp') ? 1 : 0);
+      (keys.has('w') || keys.has('ArrowUp') ? 1 : 0) +
+      padInput.y;
+  const analogSpeed = Math.min(1, Math.hypot(dx, dz));
   if (dx || dz) {
     destination = null;
     mirrorGoal = null;
@@ -1687,11 +1821,15 @@ function move(dt) {
       {
         throttle:
           (keys.has('w') || keys.has('ArrowUp') ? 1 : 0) -
-          (keys.has('s') || keys.has('ArrowDown') ? 1 : 0),
+          (keys.has('s') || keys.has('ArrowDown') ? 1 : 0) +
+          padInput.gas -
+          padInput.reverse -
+          padInput.y,
         steer:
           (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0) -
-          (keys.has('d') || keys.has('ArrowRight') ? 1 : 0),
-        brake: keys.has('Shift'),
+          (keys.has('d') || keys.has('ArrowRight') ? 1 : 0) -
+          padInput.x,
+        brake: keys.has('Shift') || padInput.brake,
       },
       dt,
       collision,
@@ -1699,7 +1837,7 @@ function move(dt) {
     destination = null;
     return;
   }
-  const speed = keys.has('Shift') ? 8 : 5.8;
+  const speed = (keys.has('Shift') || padInput.sprint ? 8 : 5.8) * (destination ? 1 : analogSpeed);
   if (destination) {
     if (navigator.walk(s, destination, speed, dt)) {
       destination = null;
@@ -1872,11 +2010,23 @@ $('campaign').onclick = campaignMenu;
 $('touchFilm').onclick = toggleFilm;
 $('touchEngage').onclick = engage;
 $('touchCar').onclick = car;
-$('film').onclick = toggleFilm;
-$('engage').onclick = engage;
-$('car').onclick = car;
+$('film').onclick = () => {
+  $('gameMenu').close();
+  toggleFilm();
+};
+$('engage').onclick = () => {
+  $('gameMenu').close();
+  engage();
+};
+$('car').onclick = () => {
+  $('gameMenu').close();
+  car();
+};
 $('police').onclick = policeReport;
-$('spray').onclick = () => spray();
+$('spray').onclick = () => {
+  $('gameMenu').close();
+  spray();
+};
 $('help').onclick = help;
 $('settings').onclick = settings;
 $('about').onclick = notes;
@@ -1902,7 +2052,25 @@ $('game').addEventListener('click', (e) => {
   if (!collision(p.x, p.z) && Math.abs(p.x) < 87 && Math.abs(p.z) < 87) destination = p;
 });
 window.addEventListener('keydown', (e) => {
-  if ($('modal').open) return;
+  if (e.key === 'Tab') {
+    // Text fields retain normal typing/focus behavior. Escape always closes their dialog.
+    if (e.target.matches('input,textarea,select')) return;
+    e.preventDefault();
+    if (!e.repeat) toggleMenu();
+    return;
+  }
+  if (menuOpen()) {
+    if (
+      !e.target.matches('input,textarea,select') &&
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)
+    ) {
+      e.preventDefault();
+      const pressed = [];
+      pressed[{ ArrowUp: 12, ArrowDown: 13, ArrowLeft: 12, ArrowRight: 13 }[e.key]] = true;
+      controllerMenu({ pressed });
+    }
+    return;
+  }
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (
     [
@@ -1932,8 +2100,7 @@ window.addEventListener('keydown', (e) => {
   if (key === 'e') car();
   if (key === ' ') engage();
   if (key === 'Escape') {
-    destination = null;
-    keys.clear();
+    openGameMenu();
   }
 });
 window.addEventListener('keyup', (e) =>
@@ -1948,7 +2115,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
     save();
     if (capture.recorder?.state === 'recording') capture.recorder.pause();
-  } else if (capture.recorder?.state === 'paused' && !$('modal').open) capture.recorder.resume();
+  } else if (capture.recorder?.state === 'paused' && !menuOpen()) capture.recorder.resume();
   last = performance.now();
 });
 window.addEventListener('pagehide', save);
@@ -1973,12 +2140,13 @@ function frame(now) {
     world.atmosphere,
     !!policeEvent,
     muted,
-    document.hidden || $('modal').open,
+    document.hidden || menuOpen(),
     !!record || speechTimer > 0,
   );
   const dt = Math.max(0, Math.min((now - last) / 1000, 0.15));
   last = now;
-  if (!document.hidden && (!$('modal').open || modalType === 'statement')) {
+  pollController(dt);
+  if (!document.hidden && (!menuOpen() || modalType === 'statement')) {
     simulate(dt);
     world.render(s, npcs, dt);
     if (record) capture.tick(world, dt);
@@ -2006,6 +2174,7 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  controller: () => structuredClone(padInput),
   view: () => ({
     mode: s.viewMode,
     mirror: world.activeMirror ? { x: world.activeMirror.x, z: world.activeMirror.z } : null,

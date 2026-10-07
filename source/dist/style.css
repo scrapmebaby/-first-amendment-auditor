@@ -1748,3 +1748,195 @@ dialog::backdrop {
     touch-action: none;
   }
 }
+
+/* The town owns the viewport. Career details live in the pause menu. */
+body.immersive {
+  overflow: hidden;
+}
+.immersive main {
+  display: block;
+  width: 100%;
+  height: 100dvh;
+  min-height: 0;
+}
+.immersive #game {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+}
+.play-toolbar {
+  position: absolute;
+  z-index: 8;
+  top: max(16px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+.play-toolbar button,
+.street-actions button {
+  background: #f6f5efed;
+  box-shadow: 0 2px 10px #14201720;
+}
+.play-status {
+  position: absolute;
+  top: 77px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 12px;
+  background: #243126d9;
+  color: #fff;
+  border-radius: 5px;
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#controllerStatus {
+  font-size: 9px;
+  opacity: 0.8;
+}
+.street-actions {
+  position: absolute;
+  right: 16px;
+  top: 157px;
+  display: flex;
+  gap: 5px;
+  z-index: 5;
+}
+.street-actions button {
+  padding: 8px 10px;
+  font-size: 11px;
+}
+#gameMenu {
+  width: min(1040px, 96vw);
+  max-height: 92dvh;
+  padding: 24px;
+}
+.menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.menu-heading h2 {
+  margin: 4px 0 20px;
+  font:
+    600 34px 'Barlow Condensed',
+    sans-serif;
+}
+#menuContents header {
+  display: flex;
+  flex-wrap: wrap;
+  height: auto;
+  padding: 15px 0;
+  gap: 12px;
+}
+#menuContents header nav {
+  display: flex;
+  margin-left: 0;
+  flex-wrap: wrap;
+}
+#menuContents .tagline {
+  display: none;
+}
+#menuContents aside {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px 0;
+  height: auto;
+  overflow: visible;
+  border: 0;
+}
+#menuContents aside > * {
+  margin: 0;
+  min-width: 0;
+}
+#menuContents .career-head,
+#menuContents .aside-footer {
+  grid-column: 1 / -1;
+}
+#menuContents footer {
+  display: flex;
+  flex-wrap: wrap;
+  height: auto;
+  padding: 14px 0;
+  gap: 12px;
+}
+.controller-help {
+  line-height: 1.8;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+@media (max-width: 750px) {
+  .immersive .world-top {
+    top: 75px;
+    left: 12px;
+    right: 12px;
+  }
+  .immersive .location h1 {
+    font-size: 25px;
+  }
+  .immersive .location p,
+  .immersive .world-badge {
+    display: none;
+  }
+  .play-toolbar {
+    top: max(10px, env(safe-area-inset-top));
+    width: calc(100% - 24px);
+    justify-content: space-between;
+  }
+  .play-status {
+    top: 135px;
+    left: 12px;
+    transform: none;
+    align-items: flex-start;
+    font-size: 10px;
+    padding: 6px 8px;
+  }
+  .immersive .view-tools {
+    top: 190px;
+    right: 10px;
+  }
+  .street-actions {
+    top: 231px;
+    right: 10px;
+  }
+  #gameMenu {
+    padding: 16px;
+  }
+  #menuContents aside {
+    grid-template-columns: 1fr;
+  }
+  #menuContents header .brand {
+    display: none;
+  }
+  #menuContents header nav {
+    gap: 6px;
+  }
+  #menuContents header nav button {
+    padding: 9px 7px;
+  }
+  #menuContents footer {
+    display: block;
+  }
+  .controller-help {
+    font-size: 11px;
+  }
+}
+
+#menuContents header nav button {
+  font-size: 12px;
+}
+
+@media (max-width: 750px) {
+  .immersive .view-hint {
+    display: none;
+  }
+}

@@ -269,3 +269,27 @@ To limit GPU cost, only the nearest mirror in front of the player within 24
 world units renders a live reflection, at half resolution. First-person and live
 mirrors require WebGPU or WebGL2; those controls are disabled in Canvas fallback.
 No account, network service or external character assets are needed.
+
+
+## v0.8 fullscreen and controllers
+
+The town fills the viewport. Tab or Menu & objectives opens the paused career
+menu; Tab/Escape or Resume returns to play. Arrow keys move keyboard focus in
+menus and Enter activates buttons. Form fields retain normal typing and Tab.
+The compact HUD retains cash, health and street actions. The fullscreen button
+requests browser fullscreen from a click; unsupported browsers keep the viewport
+layout. Mobile browser chrome may remain visible.
+
+Standard Gamepad API controllers work over your device's existing USB/Bluetooth
+connection. Press a controller button once if the browser has not exposed it yet.
+Left stick moves with analog speed; right stick looks in first-person. A/✕ engages,
+X/□ records, Y/△ enters/exits the car, B/○ hard-brakes, RT/R2 accelerates and
+LT/L2 brakes/reverses. Left stick also steers/drives. Left stick click jogs.
+LB/L1 uses mace; RB/R1 requests charges. View/Share changes view; Start/Options
+opens/closes menus. D-pad navigates menus, left/right changes select fields,
+A/✕ activates and B/○ goes back. Text entry/file pickers use device input.
+
+Stick deadzones prevent small drift. Button actions trigger once per press;
+disconnected/background controllers provide no gameplay input. Only browser
+standard mappings are supported; uncommon controllers may require OS mapping.
+There are no additional services, dependencies, accounts or permissions.

@@ -21,10 +21,12 @@ const assert = require('node:assert/strict'),
     await page.goto('http://127.0.0.1:8083');
     await page.waitForFunction(() => window.auditorDebug);
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().profanity), false);
+    await page.click('#menuToggle');
     await page.click('[data-panel=shop]');
     assert.match(await page.locator('#modalBody').innerText(), /Poop mask/);
     assert.doesNotMatch(await page.locator('#modalBody').innerText(), /shit/i);
     await page.click('#closeModal');
+    await page.click('#menuToggle');
     await page.click('#settings');
     await page.selectOption('#languageChoice', 'explicit');
     await page.click('#ambientMusic');
@@ -36,9 +38,11 @@ const assert = require('node:assert/strict'),
     await page.waitForFunction(() => window.auditorDebug);
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().profanity), true);
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().music), false);
+    await page.click('#menuToggle');
     await page.click('[data-panel=shop]');
     assert.match(await page.locator('#modalBody').innerText(), /Piece of shit mask/);
     await page.click('#closeModal');
+    await page.click('#menuToggle');
     await page.click('#settings');
     await page.selectOption('#languageChoice', 'clean');
     const save = await page.evaluate(() => auditorDebug.snapshot());
@@ -51,12 +55,12 @@ const assert = require('node:assert/strict'),
     await page.waitForFunction(() => !document.getElementById('modal').open);
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().profanity), false);
     await page.evaluate(() => auditorDebug.setEncounterRoll(0.7));
-    await page.click('#film');
-    await page.click('#engage');
+    await page.keyboard.press('f');
+    await page.keyboard.press('Space');
     await page.waitForTimeout(1800);
     assert.doesNotMatch(await page.locator('#speech').innerText(), /fuck|shit|asshole/i);
     await page.waitForTimeout(2000);
-    await page.click('#film');
+    await page.keyboard.press('f');
     assert.ok(
       await page.evaluate(() =>
         auditorDebug.snapshot().clips[0].events.some((e) => e.event.startsWith('AUDITOR:')),

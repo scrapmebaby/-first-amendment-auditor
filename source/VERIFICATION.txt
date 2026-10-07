@@ -160,3 +160,14 @@ v0.7 first-person / appearance verification
   merchandise purchases, save validation/migration and camera-relative movement.
 - Software-rendered screenshots inspected for actual reflected avatar and scene.
 - Real iOS device performance has not been measured.
+
+
+v0.8 fullscreen / controller verification
+- Chromium WebGL2 browser check: viewport fills desktop and mobile, Tab opens
+  objectives and pauses time, controller menu focus, movement, first-person look,
+  car entry, analog trigger acceleration, pause/stop and disconnect, browser
+  fullscreen API and mobile shop access. Used a simulated standard Gamepad API.
+- Controller unit tests cover deadzones, press edges, focus gating, disconnect,
+  initial connection and rejection of unknown mappings.
+- Desktop menu and mobile gameplay screenshots inspected.
+- Physical controller and real iOS hardware have not been tested.

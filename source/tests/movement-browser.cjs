@@ -31,6 +31,7 @@ const assert = require('node:assert/strict'),
     const state = await page.evaluate(() => auditorDebug.snapshot());
     Object.assign(state, { x: 0, z: -55, carX: 0, carZ: -55, driving: false });
     delete state.carHeading;
+    await page.click('#menuToggle');
     await page.click('#settings');
     await page.setInputFiles('#file', {
       name: 'old-save.json',
@@ -85,6 +86,7 @@ const assert = require('node:assert/strict'),
     await page.waitForFunction(() => auditorDebug.snapshot().carSpeed > 3);
     await page.mouse.up();
     assert.ok((await page.evaluate(() => auditorDebug.snapshot().carSpeed)) > 2, 'touch throttle');
+    await page.click('#menuToggle');
     await page.click('#settings');
     assert.equal(
       await page.evaluate(() => auditorDebug.snapshot().carSpeed),
