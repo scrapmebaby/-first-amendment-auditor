@@ -46,7 +46,13 @@ const assert = require('node:assert/strict'),
     await page.evaluate(() => testAudioContext.suspend());
     await page.locator('#thumbstick').tap();
     await page.waitForFunction(() => auditorDebug.audio().state === 'running');
-    assert.equal(await page.locator('#thumbstick .minimap').count(), 1);
+    assert.equal(await page.locator('#thumbstick .minimap').count(), 0);
+    assert.equal(await page.locator('#townMap').isVisible(), false);
+    await page.click('#mapToggle');
+    assert.ok(await page.locator('#townMap').isVisible());
+    await page.screenshot({ path: root + '/preview-map-portrait.png' });
+    await page.click('#closeMap');
+    assert.equal(await page.locator('#townMap').isVisible(), false);
     assert.equal(
       await page.locator('#stickKnob').evaluate((e) => getComputedStyle(e).backgroundColor),
       'rgba(0, 0, 0, 0)',
@@ -119,11 +125,22 @@ const assert = require('node:assert/strict'),
     await page.waitForTimeout(300);
     assert.ok(await page.locator('#thumbstick').isVisible());
     assert.ok(await page.locator('[data-pedal=gas]').isVisible());
-    assert.ok(await page.locator('#thumbstick .minimap').isVisible());
+    await page.click('#mapToggle');
+    assert.ok(await page.locator('#townMap').isVisible());
+    const mapBox = await page.locator('#townMap').boundingBox();
+    assert.ok(
+      mapBox.x >= 0 &&
+        mapBox.y >= 0 &&
+        mapBox.x + mapBox.width <= 844 &&
+        mapBox.y + mapBox.height <= 390,
+    );
+    await page.screenshot({ path: root + '/preview-map-landscape.png' });
+    await page.locator('#thumbstick').tap();
+    assert.equal(await page.locator('#townMap').isVisible(), false);
     await page.screenshot({ path: root + '/preview-touch-landscape.png' });
     assert.deepEqual(errors, []);
     console.log(
-      'Map integration, transparent stick, audio tap activation/recovery and real browser multitouch: simultaneous move/look, independent releases, cancellation, menu reset, steering+gas, brake and landscape passed. Physical iPhone untested.',
+      'Collapsible map, transparent stick, audio tap activation/recovery and real browser multitouch: simultaneous move/look, independent releases, cancellation, menu reset, steering+gas, brake and landscape passed. Physical iPhone untested.',
     );
   } finally {
     await browser.close();

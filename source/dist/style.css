@@ -2395,3 +2395,89 @@ body.immersive {
     bottom: auto;
   }
 }
+
+/* On-demand map: no map texture beneath the movement pad. */
+.map-heading {
+  display: none;
+}
+@media (pointer: coarse), (max-width: 750px) {
+  .immersive .minimap {
+    display: none;
+  }
+  .immersive .minimap.map-open {
+    display: block;
+    position: absolute;
+    z-index: 20;
+    top: auto;
+    left: 16px;
+    right: auto;
+    bottom: 250px;
+    width: 192px;
+    padding: 10px;
+    opacity: 1;
+    border: 1px solid #ffffff70;
+    border-radius: 14px;
+    background: #17251ef5;
+    box-shadow: 0 6px 24px #0005;
+    pointer-events: auto;
+  }
+  .immersive .minimap .map-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 36px;
+    color: #f0f3e1;
+    margin-bottom: 5px;
+  }
+  .map-heading strong {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  #closeMap {
+    border: 0;
+    padding: 0;
+    width: 44px;
+    min-height: 44px;
+    color: #fff;
+    font-size: 23px;
+  }
+  .immersive .minimap canvas {
+    width: 100%;
+    height: auto;
+    border-radius: 6px;
+  }
+  .immersive .minimap .map-legend {
+    color: #e5ebd5;
+    font-size: 8px;
+    letter-spacing: 0;
+    padding: 8px 0 0;
+    display: block;
+  }
+  .immersive .minimap .map-legend b {
+    margin-right: 5px;
+  }
+  .immersive #thumbstick {
+    background: #17251e1a;
+  }
+  .immersive .mobile-actions #mapToggle[aria-expanded='true'] {
+    background: #d7eaa2;
+  }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  .immersive .minimap.map-open {
+    top: 76px;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 192px;
+  }
+}
+@media (max-width: 360px) {
+  .immersive .mobile-actions {
+    gap: 4px;
+  }
+  .immersive .mobile-actions button {
+    min-width: 44px;
+    padding: 8px;
+  }
+}

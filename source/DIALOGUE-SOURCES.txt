@@ -27,7 +27,7 @@ legal authority. No network service or AI generation runs while playing.
    institutional guidance, not an encounter transcript. It informed the library
    setting and the distinction between staff, patrons and private information.
 
-Implementation: 37 authored four-turn exchanges (148 lines), plus the existing
+Implementation: 41 authored four-turn exchanges (164 lines), plus the existing
 200 event-driven lines. Context chooses library, cafe, civic, street, rain,
 recognized or heated pools. Shuffled bags avoid reuse until a pool is exhausted.
 Each exchange stays paired so replies answer the preceding line. Real gameplay

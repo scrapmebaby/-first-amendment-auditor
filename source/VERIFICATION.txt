@@ -216,3 +216,11 @@ v0.10 conversation verification
 - Encounter regression checks passed: police arrival, recorded arrest/escort,
   claim, playable footage, crying and thrown cup. The browser test now waits
   for Engage readiness instead of sending inputs during its cooldown.
+
+v0.10.1 verification
+- Mobile browser: map is absent under the stick, hidden by default, opens and
+  closes by button, stays within landscape bounds and closes on joystick input.
+  Multi-touch driving/looking and audio recovery checks still passed.
+- Portrait/landscape screenshots inspected, including sharper map markers.
+- Dialogue unit tests cover furious escalation, recognition priority and clean
+  filtering; all existing unit/syntax checks passed before the map polish.

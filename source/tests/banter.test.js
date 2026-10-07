@@ -6,7 +6,8 @@ const contexts = {
   library: { place: 'Public Library' },
   cafe: { place: 'Daily Grind' },
   recognized: { reputation: 80 },
-  heated: { patience: 20 },
+  heated: { patience: 40 },
+  enraged: { patience: 20 },
   rain: { weather: 'rain' },
 };
 let count = 0;
@@ -26,8 +27,20 @@ for (const [key, rows] of Object.entries(EXCHANGES)) {
 }
 const clean = new Banter(() => 0.2);
 for (let i = 0; i < 20; i++)
-  assert.doesNotMatch(clean.pick({ patience: 20 }).join(' '), /\bdamn\b/i);
-assert.equal(count, 148);
+  assert.doesNotMatch(
+    clean.pick({ patience: 20 }).join(' '),
+    /\b(?:damn|fuck\w*|shit|asshole|bullshit)\b/i,
+  );
+assert.equal(count, 164);
 console.log(
-  '148 paired banter lines: context pools, exhaustion, clean language and mobile line lengths passed.',
+  '164 paired banter lines: context pools, exhaustion, clean language and mobile line lengths passed.',
+);
+
+assert.ok(EXCHANGES.enraged.some((row) => row.join(' ').includes('fucking')));
+assert.ok(
+  EXCHANGES.enraged.some((row) =>
+    row
+      .join(' ')
+      .includes(new Banter(() => 0.2).pick({ patience: 20, reputation: 90, explicit: true })[0]),
+  ),
 );

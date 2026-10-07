@@ -376,3 +376,16 @@ Location, weather, reputation and patience select contextual pools. Each pool
 is shuffled and exhausted before repeating. Profanity controls apply to both
 sides. Research sources and limitations are in DIALOGUE-SOURCES.txt; no external
 transcripts, names, recordings or runtime dialogue services are bundled.
+
+## v0.10.1 compact map and escalation
+
+On phones the thumbstick is clear again. A small Map button opens a separate
+192px map card only when needed. Touching the world or movement controls closes
+it; the card also has a close button. Portrait and landscape placement avoid
+the thumbstick and pedals. The map has a sharper drawing buffer, a contrasting
+road palette, major landmark labels and a direction marker while driving or
+in first-person. Desktop retains the persistent minimap.
+
+A new furious dialogue pool adds 16 lines, bringing paired exchanges to 164.
+Low patience now overrides recognition, with stronger profanity at escalation;
+the existing clean-language setting still filters every line.

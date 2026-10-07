@@ -71,12 +71,24 @@ const touchInput = new TouchInput($('thumbstick'), $('stickKnob'), [
 const menuOpen = () => $('modal').open || $('gameMenu').open;
 const mapHost = document.querySelector('.minimap');
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 750px)');
-function placeMap() {
-  (touchLayout.matches ? $('thumbstick') : $('game')).append(mapHost);
-  touchInput.reset();
+function setMapOpen(open) {
+  mapHost.classList.toggle('map-open', open);
+  $('mapToggle').setAttribute('aria-expanded', String(open));
+  $('mapToggle').setAttribute('aria-label', open ? 'Hide town map' : 'Show town map');
 }
-placeMap();
-touchLayout.addEventListener('change', placeMap);
+$('mapToggle').onclick = () => setMapOpen(!mapHost.classList.contains('map-open'));
+$('closeMap').onclick = () => {
+  setMapOpen(false);
+  $('mapToggle').focus({ preventScroll: true });
+};
+touchLayout.addEventListener('change', () => setMapOpen(false));
+window.addEventListener(
+  'pointerdown',
+  (e) => {
+    if (touchLayout.matches && !e.target.closest('#townMap,#mapToggle')) setMapOpen(false);
+  },
+  { capture: true },
+);
 const SAVE = 'first-amendment-auditor-v1';
 let s = fresh(),
   saveFailed = false,

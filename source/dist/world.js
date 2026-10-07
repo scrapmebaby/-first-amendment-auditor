@@ -902,30 +902,54 @@ export class World {
   }
   minimap(canvas, s, npcs) {
     const c = canvas.getContext('2d'),
-      w = canvas.width,
-      h = canvas.height;
-    c.fillStyle = '#c9d3b7';
+      w = 144,
+      h = 112;
+    c.setTransform(canvas.width / w, 0, 0, canvas.height / h, 0, 0);
+    c.fillStyle = '#263f36';
     c.fillRect(0, 0, w, h);
     const sx = (x) => ((x + 90) / 180) * w,
       sz = (z) => ((z + 90) / 180) * h;
-    c.fillStyle = '#e9e7d8';
+    c.fillStyle = '#7d9185';
     for (const v of [-48, 0, 48]) {
       c.fillRect(sx(v) - 4, 0, 8, h);
       c.fillRect(0, sz(v) - 3, w, 6);
     }
     for (const b of LOCATIONS) {
-      c.fillStyle = b.color;
+      c.fillStyle = '#49675b';
       c.fillRect(sx(b.x - b.w / 2), sz(b.z - b.d / 2), (b.w / 180) * w, (b.d / 180) * h);
     }
-    c.fillStyle = '#9b7353';
+    c.font = 'bold 5px sans-serif';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillStyle = '#e4efdc';
+    for (const b of LOCATIONS) {
+      const label = /city hall/i.test(b.name)
+        ? 'HALL'
+        : /library/i.test(b.name)
+          ? 'LIB'
+          : /grind|cafe/i.test(b.name)
+            ? 'CAFE'
+            : '';
+      if (label) c.fillText(label, sx(b.x), sz(b.z));
+    }
+    c.fillStyle = '#efbd73';
     c.fillRect(sx(s.carX) - 2, sz(s.carZ) - 2, 4, 4);
-    c.fillStyle = '#3c5532';
+    c.fillStyle = '#d9f38d';
     c.beginPath();
     c.arc(sx(s.x), sz(s.z), 3.5, 0, Math.PI * 2);
     c.fill();
-    c.strokeStyle = '#f4fcc3';
+    c.strokeStyle = '#15271e';
     c.lineWidth = 2;
     c.stroke();
+    if (s.driving || s.viewMode === 'first') {
+      const heading = s.driving ? s.carHeading || 0 : s.lookYaw;
+      c.strokeStyle = '#e9ffae';
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(sx(s.x), sz(s.z));
+      c.lineTo(sx(s.x) + Math.sin(heading) * 9, sz(s.z) + Math.cos(heading) * 9);
+      c.stroke();
+    }
     if (this.waypoint) {
       c.strokeStyle = '#d5ac41';
       c.lineWidth = 2;

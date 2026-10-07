@@ -78,3 +78,10 @@ Engage starts auditor/civilian banter, even before recording. A collapsible
 conversation panel keeps speakers and replies readable on phones. 148 new
 original lines use contextual pools without immediate repetition.
 [Research notes and transcript sources](source/DIALOGUE-SOURCES.txt).
+
+## Compact map (v0.10.1)
+
+The phone map is now hidden behind a small Map button, separate from the
+transparent thumbstick. It closes when you resume movement. Map contrast,
+landmark labels and facing markers improve readability in its compact card.
+Escalation dialogue now swears more strongly when profanity is enabled.

@@ -41,11 +41,16 @@ What's the official complaint process here? | Tell me what's wrong with your ord
 I'm back to see whether anything has improved. | We bought curtains. | That's a concerning reduction in transparency. | That's a perfectly ordinary reduction in glare.
 Last time, my audience had serious questions. | Did any of them ask where the missing five minutes went? | Editing is part of journalism. | So is answering a question.
 I'm offering the town a chance to correct the record. | Upload the beginning of the video, then. | That part doesn't advance the story. | Funny. It's where the story happened.`),
+  enraged:
+    group(`For the record, your tone is extremely hostile. | Because you won't fucking leave me alone! | I'm simply documenting the interaction. | Then document me telling you to back the fuck up.
+You are obstructing my fact-finding process. | Your process is shoving a fucking camera at me! | I prefer the term close-range reporting. | I prefer the term get that shit out of my face.
+I'm going to need that statement repeated clearly. | I said stop filming me, asshole! | I heard you. I was checking the audio levels. | Check your fucking hearing while you're at it.
+This is exactly why independent oversight matters. | This is exactly why nobody can stand your bullshit! | Strong opinions make a compelling record. | Keep the bit where you spent ten minutes winding me up!`),
   heated:
     group(`Your reaction is becoming the story. | You've been narrating my damn errands for ten minutes. | I'm not responsible for how you choose to react. | You're very invested in the result, though.
-I need you to lower your voice for the record. | You just asked me to repeat it louder! | The microphone wasn't picking you up. | Then it has better boundaries than you.
+I need you to lower your voice for the record. | You just asked me to repeat it louder, for fuck's sake! | The microphone wasn't picking you up. | Then it has better boundaries than you.
 Are you trying to intimidate the independent press? | I'm asking you to stop blocking the door. | That sounds like a demand. | Doors are famously difficult to use through people.
-I'm remaining completely professional. | You're wearing a clown mask and filming my groceries. | Equipment does not invalidate my investigation. | Neither do groceries create one.`),
+I'm remaining completely professional. | You're wearing a fucking clown mask and filming my groceries. | Equipment does not invalidate my investigation. | Neither do groceries create one.`),
   rain: group(`A little weather won't stop this investigation. | It might stop my paper bag holding together. | We all make sacrifices for transparency. | Only one of us is losing oranges.
 I'm documenting the conditions on this public sidewalk. | Then document the puddle and let me get past. | Are you directing my coverage? | I'm directing my dry shoe around your foot.
 Can you make a brief statement about today's events? | It's raining. I would like to go inside. | Anything else for the viewers? | Bring a coat. Leave people alone.`),
@@ -58,18 +63,20 @@ export class Banter {
   }
   pick({ place = '', weather = '', reputation = 0, patience = 100, explicit = false } = {}) {
     let key =
-      patience < 50
-        ? 'heated'
-        : /library/i.test(place)
-          ? 'library'
-          : /café|cafe|grind/i.test(place)
-            ? 'cafe'
-            : /city hall|post office|court/i.test(place)
-              ? 'civic'
-              : weather === 'rain'
-                ? 'rain'
-                : 'street';
-    if (reputation >= 20 && this.random() < 0.35) key = 'recognized';
+      patience < 25
+        ? 'enraged'
+        : patience < 50
+          ? 'heated'
+          : /library/i.test(place)
+            ? 'library'
+            : /café|cafe|grind/i.test(place)
+              ? 'cafe'
+              : /city hall|post office|court/i.test(place)
+                ? 'civic'
+                : weather === 'rain'
+                  ? 'rain'
+                  : 'street';
+    if (patience >= 50 && reputation >= 20 && this.random() < 0.35) key = 'recognized';
     let bag = this.bags.get(key);
     if (!bag?.length) {
       bag = EXCHANGES[key].map((_, i) => i);
