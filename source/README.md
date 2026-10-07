@@ -332,3 +332,12 @@ pedals support simultaneous steering and throttle. Lift a pedal to release it.
 Controls reset when menus open, the browser loses focus, a touch is cancelled
 or the viewport changes. Coarse-pointer devices get controls in landscape too,
 with safe-area spacing and a smaller minimap out of the thumb area.
+
+## v0.9.2 compact HUD
+
+Removed the fullscreen request button (the game still fills its viewport).
+The top-left menu is a labeled hamburger icon; Tab remains available. Zoom
+buttons are hidden in first-person and scroll no longer changes its zoom.
+View/mirror and street actions share one two-row panel. Touch devices use
+drag-to-look without duplicate turn buttons. Portrait notices sit below the
+right-side panel. Desktop turn buttons remain available.

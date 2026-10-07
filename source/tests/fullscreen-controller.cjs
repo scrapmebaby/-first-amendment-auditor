@@ -97,10 +97,8 @@ const assert = require('node:assert/strict'),
     await page.waitForTimeout(250);
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().carSpeed), 0);
-    await page.click('#fullscreenToggle');
-    await page.waitForTimeout(250);
-    assert.ok(await page.evaluate(() => document.fullscreenElement));
-    await page.evaluate(() => document.exitFullscreen());
+    assert.equal(await page.locator('#fullscreenToggle').count(), 0);
+    assert.equal(await page.locator('#zoomControls').isVisible(), false);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(300);
     assert.deepEqual(await page.locator('#game').boundingBox(), {
@@ -117,7 +115,7 @@ const assert = require('node:assert/strict'),
     assert.equal(await page.locator('#modal').evaluate((e) => e.open), false);
     assert.deepEqual(errors, []);
     console.log(
-      'Viewport, Tab/objectives, pause, controller movement/look/menu/car/triggers/disconnect, browser fullscreen and mobile menu passed (simulated standard gamepad).',
+      'Viewport, Tab/objectives, pause, controller movement/look/menu/car/triggers/disconnect, first-person zoom hiding and mobile menu passed (simulated standard gamepad).',
     );
   } finally {
     await browser.close();

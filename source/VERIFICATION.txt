@@ -191,3 +191,9 @@ v0.9.1 touch verification
 - Radial deadzone, analog speed, diagonal normalization and jog threshold unit
   tests passed. Portrait and landscape screenshots inspected.
 - Physical iPhone/Safari feel and frame rate remain untested.
+
+v0.9.2 HUD verification
+- Touch browser checks passed after grouping controls; portrait/landscape
+  screenshots inspected. Controller/menu checks also passed, including absence
+  of the fullscreen button and hidden first-person zoom controls.
+- JavaScript syntax/build checks passed. Physical iOS testing remains pending.

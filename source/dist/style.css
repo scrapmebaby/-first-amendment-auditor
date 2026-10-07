@@ -2114,3 +2114,115 @@ body.immersive {
     color: #253126;
   }
 }
+
+/* Compact, consistently grouped HUD actions; fullscreen stays browser-owned. */
+.immersive .play-toolbar {
+  left: max(16px, env(safe-area-inset-left));
+  top: max(16px, env(safe-area-inset-top));
+  right: auto;
+  width: auto;
+  transform: none;
+}
+#menuToggle {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 12px;
+}
+#menuToggle svg {
+  pointer-events: none;
+}
+.action-panel {
+  position: absolute;
+  top: 112px;
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 8;
+  width: 224px;
+  padding: 6px;
+  border: 1px solid #ffffff65;
+  border-radius: 14px;
+  background: #f3f4eced;
+  box-shadow: 0 4px 18px #14201725;
+}
+.immersive .action-panel .view-tools,
+.immersive .action-panel .street-actions {
+  position: static;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.immersive .action-panel .street-actions {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #52634725;
+}
+.immersive .action-panel button {
+  min-height: 44px;
+  padding: 7px 5px;
+  border: 0;
+  border-radius: 8px;
+  box-shadow: none;
+  background: #ffffff70;
+  color: #29372c;
+  font:
+    600 11px 'DM Sans',
+    sans-serif;
+}
+.immersive .action-panel button:hover {
+  background: #e3edcc;
+}
+.immersive .action-panel button:disabled {
+  background: transparent;
+}
+.immersive .action-panel .hidden,
+#zoomControls[hidden] {
+  display: none;
+}
+@media (max-width: 750px) {
+  .immersive .action-panel {
+    top: 185px;
+    right: 12px;
+    width: 212px;
+  }
+  .immersive .play-status {
+    top: 16px;
+    left: 78px;
+    right: 12px;
+    transform: none;
+    min-height: 46px;
+    justify-content: center;
+  }
+  .immersive .minimap {
+    top: 309px;
+  }
+}
+@media (pointer: coarse) {
+  .immersive .action-panel .look-button {
+    display: none;
+  }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  .immersive .action-panel {
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    width: 212px;
+  }
+  .immersive .play-status {
+    top: 16px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+  .immersive #touchLookHint {
+    display: none;
+  }
+}
+@media (max-width: 750px) and (min-height: 501px) {
+  .immersive .toast {
+    top: auto;
+    bottom: 260px;
+    width: calc(100% - 40px);
+  }
+}

@@ -1457,7 +1457,8 @@ function updateUI() {
   $('hudStatus').textContent =
     `${money(s.cash)} · Health ${Math.round(s.health)} · ${s.driving ? 'DRIVING' : 'ON FOOT'}`;
   const first = s.viewMode === 'first' && !!world.camera;
-  $('viewToggle').textContent = first ? 'Overhead · V' : 'First person · V';
+  $('viewToggle').textContent = first ? 'Overhead view' : 'First person';
+  $('zoomControls').hidden = first;
   $('viewToggle').disabled = !world.camera;
   $('zoomIn').disabled = first;
   $('zoomOut').disabled = first;
@@ -1647,19 +1648,6 @@ $('menuToggle').onclick = toggleMenu;
 $('resumeGame').onclick = toggleMenu;
 $('quickPolice').onclick = policeReport;
 $('quickSpray').onclick = () => spray();
-$('fullscreenToggle').onclick = async () => {
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else if (document.documentElement.requestFullscreen)
-      await document.documentElement.requestFullscreen();
-    else notify('This browser keeps its own toolbar. The game already fills the available screen.');
-  } catch {
-    notify('Fullscreen is unavailable here. The game still fills your browser window.');
-  }
-};
-document.addEventListener('fullscreenchange', () =>
-  $('fullscreenToggle').setAttribute('aria-pressed', String(!!document.fullscreenElement)),
-);
 function controllerMenu(input) {
   const dialog = $('modal').open ? $('modal') : $('gameMenu');
   const options = [...dialog.querySelectorAll('button, a[href], select, input, textarea')].filter(
@@ -2078,7 +2066,7 @@ $('game').addEventListener(
   'wheel',
   (e) => {
     e.preventDefault();
-    world.zoom = clamp(world.zoom - e.deltaY * 0.008, 3.5, 24);
+    if (s.viewMode !== 'first') world.zoom = clamp(world.zoom - e.deltaY * 0.008, 3.5, 24);
   },
   { passive: false },
 );

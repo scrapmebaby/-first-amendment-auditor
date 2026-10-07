@@ -44,7 +44,7 @@ First-person and live mirrors require WebGPU or WebGL2.
 ## Fullscreen and controllers (v0.8)
 
 The town fills your screen. Tab or Menu & objectives opens the pause menu.
-Use ⛶ for browser fullscreen where supported. Standard Xbox/PlayStation-style
+Standard Xbox/PlayStation-style
 controllers use left stick to move, right stick to look in first-person, triggers
 to drive and Start/Options for menus. Full bindings appear in the menu.
 
@@ -60,3 +60,9 @@ Automatic color; lower resolution to Automatic for smoother play and less heat.
 Use the left thumbstick to walk; push to the edge to jog. Drag the right side
 to look in first-person. While driving, the stick steers and separate pedals
 control gas, brake/reverse and stopping. Portrait and landscape are supported.
+
+## Compact controls (v0.9.2)
+
+The hamburger icon opens the menu. The fullscreen request button is removed.
+Zoom hides in first-person, and the right-side view/street actions share one
+compact panel. Phones use drag-to-look without duplicate turn arrows.
