@@ -150,3 +150,13 @@ v0.6.2: OfflineAudioContext renders verify daylight bird output, quiet driving,
 initial music silence, audible musical passages, long silent gaps, and music
 disabled. Engine audio regression and preference migration checks passed.
 Core/campaign/dialogue/movement tests and syntax/build checks passed.
+
+
+v0.7 first-person / appearance verification
+- Native WebGPU and WebGL2 Chromium: live mirror rendering, avatar flies,
+  purchased shirt/mask reflection, view switching, mobile drag and save persistence.
+- Native WebGPU: Find mirror auto-walk reaches its target and enters first-person.
+- Appearance unit coverage: seeded placements, safe reachable approach points,
+  merchandise purchases, save validation/migration and camera-relative movement.
+- Software-rendered screenshots inspected for actual reflected avatar and scene.
+- Real iOS device performance has not been measured.

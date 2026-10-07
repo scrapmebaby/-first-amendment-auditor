@@ -1,3 +1,4 @@
+import { MERCH, mirrorSites, viewMovement } from './appearance.js';
 import { Navigator, drive, slide } from './movement.js';
 import { Dialogue, language } from './dialogue.js';
 import {
@@ -71,6 +72,7 @@ progressCareer(s);
 const world = new World($('world'), $('labels'));
 world.atmosphere.choice = s.weather || 'living';
 $('engine').textContent = await world.init();
+if (!world.camera) s.viewMode = 'overhead';
 let keys = new Set(),
   destination = null,
   record = null,
@@ -240,7 +242,14 @@ function sound(freq = 420, dur = 0.09) {
 function nearest() {
   return (
     npcs
-      .filter((n) => n.cooldown <= 0 && !n.inCustody)
+      .filter(
+        (n) =>
+          n.cooldown <= 0 &&
+          !n.inCustody &&
+          (s.viewMode !== 'first' ||
+            Math.sin(s.lookYaw) * (n.x - s.x) + Math.cos(s.lookYaw) * (n.z - s.z) >
+              Math.hypot(n.x - s.x, n.z - s.z) * 0.25),
+      )
       .sort((a, b) => Math.hypot(a.x - s.x, a.z - s.z) - Math.hypot(b.x - s.x, b.z - s.z))
       .find((n) => Math.hypot(n.x - s.x, n.z - s.z) < 9) || null
   );
@@ -1029,11 +1038,19 @@ function shop() {
     `<p class="intro">Available: <b>${money(s.cash)}</b> · Credit limit: −$350. Negative balances accrue 2% interest at midnight. Equipment improves clicks, not margins.</p><div class="clip"><h3>Camera condition: ${s.campaign.condition}%</h3><p class="intro">A smashed camera cannot record. Damaged equipment lowers usable reach.</p><button id="repairGear">Repair equipment · ${money(Math.round((100 - s.campaign.condition) * 0.55) + 10)}</button></div><div class="shop-grid">${ITEMS.map(
       (i) => {
         const owned = s.gear.includes(i.id) && i.id !== 'spray';
-        return `<article class="shop-card"><span class="item-icon">${i.icon}</span><span class="eyebrow">${i.id.startsWith('crew') ? 'PERSONNEL' : i.id === 'clown' || i.id === 'poop' ? 'WARDROBE' : 'EQUIPMENT'}</span><h3>${i.name}</h3><p>${i.desc}</p><button data-buy="${i.id}" ${owned ? 'disabled class="owned"' : ''}><span>${owned ? (s.mask === i.id ? 'Equipped' : 'Owned') : i.id === 'spray' && s.spray ? 'Refill' : 'Acquire'}</span><b>${owned ? '✓' : money(i.price)}</b></button>${owned && ['clown', 'poop'].includes(i.id) ? `<button data-mask="${i.id}" style="margin-top:6px">${s.mask === i.id ? 'Remove mask' : 'Wear mask'}</button>` : ''}</article>`;
+        return `<article class="shop-card"><span class="item-icon">${i.icon}</span><span class="eyebrow">${i.id.startsWith('crew') ? 'PERSONNEL' : i.id === 'clown' || i.id === 'poop' || MERCH[i.id] ? 'WARDROBE' : 'EQUIPMENT'}</span><h3>${i.name}</h3><p>${i.desc}</p><button data-buy="${i.id}" ${owned ? 'disabled class="owned"' : ''}><span>${owned ? (s.mask === i.id || s.merch === i.id ? 'Equipped' : 'Owned') : i.id === 'spray' && s.spray ? 'Refill' : 'Acquire'}</span><b>${owned ? '✓' : money(i.price)}</b></button>${owned && ['clown', 'poop'].includes(i.id) ? `<button data-mask="${i.id}" style="margin-top:6px">${s.mask === i.id ? 'Remove mask' : 'Wear mask'}</button>` : ''}${owned && MERCH[i.id] ? `<button data-merch="${i.id}" style="margin-top:6px">${s.merch === i.id ? 'Wear original shirt' : 'Wear shirt'}</button>` : ''}</article>`;
       },
     ).join(
       '',
-    )}</div><p class="modal-note">Crew visibly follow you in “I’m with stupid” shirts. Both masks change your appearance and shorten local patience. Spray carries consequences.</p>`,
+    )}</div><p class="modal-note">Crew visibly follow you in “I’m with stupid” shirts. Masks and merch show on your character and in town mirrors. Masks also shorten local patience. Spray carries consequences.</p>`,
+  );
+  document.querySelectorAll('[data-merch]').forEach(
+    (b) =>
+      (b.onclick = () => {
+        s.merch = s.merch === b.dataset.merch ? null : b.dataset.merch;
+        save();
+        shop();
+      }),
   );
   $('repairGear').onclick = () => {
     const r = repairEquipment(s);
@@ -1073,7 +1090,7 @@ function help() {
   openModal(
     'help',
     'Your guide to public disservice.',
-    `<p class="intro">A satirical open world about manufacturing outrage, then discovering the overhead. The only real victory is leaving the outrage career and becoming useful to other people.</p><div class="help-grid"><section><h3>01 / Find the story</h3><p>Use <kbd>WASD</kbd> or arrow keys to walk. Click a nearby patch of sidewalk to move there. Hold Shift to jog. Scroll or use + / − to zoom. Walk close to your smoking brown car and press <kbd>E</kbd> to drive. Driving: W / ↑ accelerates, S / ↓ brakes then reverses, A/D or ←/→ steer, Shift brakes hard. Stop before exiting. Click-to-walk routes around buildings; driving uses the controls.</p></section><section><h3>02 / Make it about you</h3><p>Near a local, press <kbd>F</kbd> to film and <kbd>Space</kbd> to deliver your rotating legal catchphrases. Locals argue, leave, play music, throw stink bombs, or make contact. Press F to save the clip.</p></section><section><h3>03 / Edit. Upload. Regret.</h3><p>Open Editing desk. Keep the full context or remove your provocation for more clicks. Claimed audio earns nothing. Editing, data, crew and equipment all cost money. The ledger tells the truth.</p></section><section><h3>04 / Live with it</h3><p>After contact, demand charges against the civilian: “This person hit me! I’m the victim!” Officers review the encounter and may arrest the civilian. A later civil claim against the city is a separate choice. Outcomes vary. Once bought, mace fires automatically when a civilian shoves you or your camera. You can also use the Mace button. Each use consumes a charge; the spray, civilian reaction and your self-defense claim are recorded. Low health sends you to hospital for $65. Gear can be bought on credit; daily expenses and interest compound. Open Home, loans & career to manage retaliation, loans and your eventual career change. The report form is the one menu where the town keeps moving.</p></section></div><p class="modal-note">Progress autosaves in this browser. Use Settings to export a gameplay backup; download video takes separately from the editing desk. The game pauses in menus and background tabs, except for police statement forms: the suspect can leave while you write. This is a playable prototype with a compact town, not a finished large-scale game.</p><button class="primary" id="backTown">I have several questionable ideas →</button>`,
+    `<p class="intro">A satirical open world about manufacturing outrage, then discovering the overhead. The only real victory is leaving the outrage career and becoming useful to other people.</p><div class="help-grid"><section><h3>01 / Find the story</h3><p>Use <kbd>WASD</kbd> or arrow keys to walk. Click a nearby patch of sidewalk to move there. Hold Shift to jog. Scroll or use + / − to zoom. Walk close to your smoking brown car and press <kbd>E</kbd> to drive. V toggles first-person on supported devices; drag to look or use Q/R and the turn buttons. Find mirror walks to a nearby mirror. Driving: W / ↑ accelerates, S / ↓ brakes then reverses, A/D or ←/→ steer, Shift brakes hard. Stop before exiting. Click-to-walk routes around buildings; driving uses the controls.</p></section><section><h3>02 / Make it about you</h3><p>Near a local, press <kbd>F</kbd> to film and <kbd>Space</kbd> to deliver your rotating legal catchphrases. Locals argue, leave, play music, throw stink bombs, or make contact. Press F to save the clip.</p></section><section><h3>03 / Edit. Upload. Regret.</h3><p>Open Editing desk. Keep the full context or remove your provocation for more clicks. Claimed audio earns nothing. Editing, data, crew and equipment all cost money. The ledger tells the truth.</p></section><section><h3>04 / Live with it</h3><p>After contact, demand charges against the civilian: “This person hit me! I’m the victim!” Officers review the encounter and may arrest the civilian. A later civil claim against the city is a separate choice. Outcomes vary. Once bought, mace fires automatically when a civilian shoves you or your camera. You can also use the Mace button. Each use consumes a charge; the spray, civilian reaction and your self-defense claim are recorded. Low health sends you to hospital for $65. Gear can be bought on credit; daily expenses and interest compound. Open Home, loans & career to manage retaliation, loans and your eventual career change. The report form is the one menu where the town keeps moving.</p></section></div><p class="modal-note">Progress autosaves in this browser. Use Settings to export a gameplay backup; download video takes separately from the editing desk. The game pauses in menus and background tabs, except for police statement forms: the suspect can leave while you write. This is a playable prototype with a compact town, not a finished large-scale game.</p><button class="primary" id="backTown">I have several questionable ideas →</button>`,
   );
   $('backTown').onclick = closeModal;
 }
@@ -1138,6 +1155,8 @@ function settings() {
       capture.stop(null);
       resetLocals();
       s = migrateSave(parsed);
+      if (!world.camera) s.viewMode = 'overhead';
+      mirrorGoal = null;
       s.carSpeed = 0;
       s.routeGoal = null;
       record = null;
@@ -1400,6 +1419,20 @@ function paperwork() {
 }
 
 function updateUI() {
+  const first = s.viewMode === 'first' && !!world.camera;
+  $('viewToggle').textContent = first ? 'Overhead · V' : 'First person · V';
+  $('viewToggle').disabled = !world.camera;
+  $('zoomIn').disabled = first;
+  $('zoomOut').disabled = first;
+  $('viewHint').textContent = s.driving
+    ? '↑ Gas · ↓ Brake / reverse · ← → Steer'
+    : 'Drag to look · Q/R turn · WASD / arrows walk';
+  $('findMirror').disabled = !world.camera;
+  $('viewHint').classList.toggle('hidden', !first);
+  $('crosshair').classList.toggle('hidden', !first);
+  document
+    .querySelectorAll('[data-look]')
+    .forEach((b) => b.classList.toggle('hidden', !first || s.driving));
   if ($('escapeTimer'))
     $('escapeTimer').textContent =
       policeEvent && !policeEvent.escaped
@@ -1553,8 +1586,77 @@ function updateUI() {
   }
   world.minimap($('map'), s, npcs);
 }
+let mirrorGoal = null;
+function toggleView() {
+  if (!world.camera) {
+    notify('First-person and live mirrors need WebGPU or WebGL 2.');
+    return;
+  }
+  s.viewMode = s.viewMode === 'first' ? 'overhead' : 'first';
+  destination = null;
+  mirrorGoal = null;
+  world.cameraKey = '';
+  save();
+  updateUI();
+  notify(
+    s.viewMode === 'first'
+      ? 'First person: drag to look. Q/R or ↶/↷ turn. V switches view.'
+      : 'Overhead view. Click the sidewalk to walk.',
+  );
+}
+function findMirror() {
+  if (s.driving) {
+    notify('Park and get out to check your reflection.');
+    return;
+  }
+  if (!world.camera) {
+    notify('Live mirrors need WebGPU or WebGL 2.');
+    return;
+  }
+  const closest = mirrorSites(s.mirrorSeed).sort(
+    (a, b) => Math.hypot(a.x - s.x, a.z - s.z) - Math.hypot(b.x - s.x, b.z - s.z),
+  )[0];
+  mirrorGoal = { x: closest.x, z: closest.z + 3.5 };
+  destination = { ...mirrorGoal };
+  world.waypoint = { ...destination, label: 'MIRROR' };
+  notify('Walking to the nearest mirror. Masks, merch and your flies show in the reflection.');
+}
+$('viewToggle').onclick = toggleView;
+$('findMirror').onclick = findMirror;
+let lookDrag = null;
+$('game').addEventListener('pointerdown', (e) => {
+  if (s.viewMode !== 'first' || e.target.closest('button, .minimap') || e.button !== 0) return;
+  lookDrag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  $('game').setPointerCapture(e.pointerId);
+});
+$('game').addEventListener('pointermove', (e) => {
+  if (!lookDrag || lookDrag.id !== e.pointerId) return;
+  s.lookYaw = Math.atan2(
+    Math.sin(s.lookYaw - (e.clientX - lookDrag.x) * 0.006),
+    Math.cos(s.lookYaw - (e.clientX - lookDrag.x) * 0.006),
+  );
+  s.lookPitch = clamp(s.lookPitch - (e.clientY - lookDrag.y) * 0.004, -0.85, 0.85);
+  lookDrag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+});
+for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'])
+  $('game').addEventListener(event, () => (lookDrag = null));
+document.querySelectorAll('[data-look]').forEach((b) => {
+  b.onpointerdown = (e) => {
+    e.preventDefault();
+    b.setPointerCapture(e.pointerId);
+    keys.add(b.dataset.look);
+  };
+  b.onpointerup = b.onpointercancel = () => keys.delete(b.dataset.look);
+});
 const navigator = new Navigator(collision);
 function move(dt) {
+  if (s.viewMode === 'first') {
+    const turn = (keys.has('q') ? 1 : 0) - (keys.has('r') ? 1 : 0);
+    s.lookYaw = Math.atan2(
+      Math.sin(s.lookYaw + turn * dt * 1.8),
+      Math.cos(s.lookYaw + turn * dt * 1.8),
+    );
+  }
   let dx =
       (keys.has('d') || keys.has('ArrowRight') ? 1 : 0) -
       (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0),
@@ -1563,17 +1665,20 @@ function move(dt) {
       (keys.has('w') || keys.has('ArrowUp') ? 1 : 0);
   if (dx || dz) {
     destination = null;
+    mirrorGoal = null;
     const ax = (dx + dz) * 0.707,
       az = (dz - dx) * 0.707;
-    dx = ax;
-    dz = az;
+    if (s.viewMode === 'first') {
+      const vector = viewMovement(dx, -dz, s.lookYaw);
+      dx = vector.x;
+      dz = vector.z;
+    } else {
+      dx = ax;
+      dz = az;
+    }
   } else if (destination) {
     dx = destination.x - s.x;
     dz = destination.z - s.z;
-    if (Math.hypot(dx, dz) < 0.5) {
-      destination = null;
-      dx = dz = 0;
-    }
   }
   if (s.driving) {
     // Driving uses vehicle-relative steering; walking remains screen-relative.
@@ -1596,7 +1701,17 @@ function move(dt) {
   }
   const speed = keys.has('Shift') ? 8 : 5.8;
   if (destination) {
-    if (navigator.walk(s, destination, speed, dt)) destination = null;
+    if (navigator.walk(s, destination, speed, dt)) {
+      destination = null;
+      if (mirrorGoal) {
+        s.viewMode = 'first';
+        s.lookYaw = Math.PI;
+        s.lookPitch = -0.1;
+        mirrorGoal = null;
+        world.waypoint = null;
+        save();
+      }
+    }
     return;
   }
   s.routeGoal = null;
@@ -1780,7 +1895,7 @@ $('game').addEventListener(
   { passive: false },
 );
 $('game').addEventListener('click', (e) => {
-  if (s.driving) return;
+  if (s.driving || s.viewMode === 'first') return;
   if (e.target.closest('button') || e.target.closest('.minimap')) return;
   const rect = $('game').getBoundingClientRect(),
     p = world.unproject(e.clientX - rect.left, e.clientY - rect.top);
@@ -1803,12 +1918,16 @@ window.addEventListener('keydown', (e) => {
       'f',
       'e',
       'Shift',
+      'q',
+      'r',
+      'v',
     ].includes(key)
   ) {
     e.preventDefault();
     keys.add(key);
   }
   if (e.repeat) return;
+  if (key === 'v') toggleView();
   if (key === 'f') toggleFilm();
   if (key === 'e') car();
   if (key === ' ') engage();
@@ -1887,6 +2006,14 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  view: () => ({
+    mode: s.viewMode,
+    mirror: world.activeMirror ? { x: world.activeMirror.x, z: world.activeMirror.z } : null,
+    mirrors: mirrorSites(s.mirrorSeed),
+    merch: world.people?.get('auditor')?.merchKind,
+    flies: !!world.people?.get('auditor')?.flies?.visible,
+    camera: world.camera?.position.toArray(),
+  }),
   locals: () => npcs.map((n) => ({ id: n.id, x: n.x, z: n.z, moving: n.moving, flee: n.flee })),
   setEncounterRoll(value) {
     if (value !== null && (!Number.isFinite(value) || value < 0 || value >= 1))

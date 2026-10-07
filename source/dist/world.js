@@ -177,6 +177,7 @@ export const LOCATIONS = [
   },
 ];
 export function collision(x, z, pad = 0.9) {
+  if (Math.abs(x - 7) < 1.6 + pad && Math.abs(z - 4) < 0.2 + pad) return true;
   return LOCATIONS.some(
     (b) =>
       b.type !== 'park' && Math.abs(x - b.x) < b.w / 2 + pad && Math.abs(z - b.z) < b.d / 2 + pad,
@@ -449,6 +450,10 @@ export class World {
       this.box(x, 0, 87, 0.35, 1.6, 0.35, '#c5c1a9');
     }
     this.box(-25, 1, 87, 27, 0.2, 0.2, '#d9d1b6');
+    if (this.constructor === World) {
+      this.box(7, 0.15, 3.95, 3.05, 4.05, 0.2, '#786d51');
+      this.box(7, 0.28, 4.06, 2.78, 3.78, 0.02, '#9cb5b7');
+    }
     this.static = this.polys;
     this.polys = [];
   }
@@ -549,6 +554,7 @@ export class World {
     }
   }
   render(s, npcs, dt) {
+    this.playerState = s;
     const r = this.canvas.getBoundingClientRect(),
       dpr = Math.min(devicePixelRatio || 1, 2);
     this.w = r.width;
@@ -599,6 +605,8 @@ export class World {
           player: s.campaign?.career === 'auditor',
           working: s.campaign?.serviceTask?.jobId,
           mask: s.mask,
+          merch: s.campaign?.career === 'auditor' ? s.merch : null,
+          flies: s.campaign?.career === 'auditor',
           color: s.campaign?.career === 'auditor' ? '#ece7c8' : '#8aa4a0',
           hair: '#5b6750',
           moving: s.moving,
@@ -707,7 +715,7 @@ export class World {
     c.clearRect(0, 0, this.w, this.h);
     this.atmosphere.draw(c, this.w, this.h, this);
     c.textAlign = 'center';
-    for (const b of LOCATIONS) {
+    for (const b of this.playerState?.viewMode === 'first' ? [] : LOCATIONS) {
       let [x, y] = this.project(b.x, b.h + 2, b.z);
       if (x < -60 || x > this.w + 60 || y < 160 || y > this.h - 65) continue;
       c.font = '600 9px "DM Sans",sans-serif';

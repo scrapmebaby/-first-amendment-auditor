@@ -1,3 +1,4 @@
+import { MERCH } from './appearance.js';
 import * as THREE from 'three/webgpu';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
@@ -593,14 +594,14 @@ function consolidate(group) {
   mesh.castShadow = mesh.receiveShadow = true;
   group.add(mesh);
 }
-function labelTexture(text) {
+function labelTexture(text, background = '#d4cbb0', foreground = '#34352f') {
   const c = document.createElement('canvas');
   c.width = 256;
   c.height = 128;
   const x = c.getContext('2d');
-  x.fillStyle = '#d4cbb0';
+  x.fillStyle = background;
   x.fillRect(0, 0, 256, 128);
-  x.fillStyle = '#34352f';
+  x.fillStyle = foreground;
   x.textAlign = 'center';
   x.font = '900 32px sans-serif';
   text.split('|').forEach((s, i) => x.fillText(s, 128, 47 + i * 38));
@@ -913,6 +914,71 @@ export class Character {
     this.skinRig();
     this.mask = null;
     this.setMask(null);
+  }
+  setMerch(kind) {
+    if (this.merchKind === kind) return;
+    this.merchKind = kind;
+    if (this.merchMesh) {
+      this.body.remove(this.merchMesh);
+      this.merchMesh.geometry.dispose();
+      this.merchMesh.material.map.dispose();
+      this.merchMesh.material.dispose();
+      this.merchMesh = null;
+    }
+    const shirt = MERCH[kind];
+    if (!shirt) return;
+    const texture = labelTexture(shirt.label, shirt.color, '#f4edda');
+    this.merchMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.04, 0.52),
+      new THREE.MeshStandardMaterial({ map: texture, roughness: 1 }),
+    );
+    this.merchMesh.position.set(0, 0.57, 0.425);
+    this.body.add(this.merchMesh);
+  }
+  updateFlies(t, enabled) {
+    if (!enabled) {
+      if (this.flies) this.flies.visible = false;
+      return;
+    }
+    if (!this.flies) {
+      this.flies = new THREE.Group();
+      this.root.add(this.flies);
+      this.flyBodies = new THREE.InstancedMesh(
+        new THREE.SphereGeometry(0.032, 5, 4),
+        new THREE.MeshStandardMaterial({ color: '#1d2318', roughness: 0.9 }),
+        8,
+      );
+      this.flyWings = new THREE.InstancedMesh(
+        new THREE.SphereGeometry(0.026, 4, 3),
+        new THREE.MeshStandardMaterial({ color: '#b7c0a6', roughness: 0.4 }),
+        16,
+      );
+      this.flies.add(this.flyBodies, this.flyWings);
+      this.flyMatrix = new THREE.Object3D();
+    }
+    this.flies.visible = true;
+    for (let i = 0; i < 8; i++) {
+      const a = t * (1.5 + i * 0.13) + i * 2.4,
+        r = 0.7 + (i % 3) * 0.15;
+      const x = Math.cos(a) * r,
+        y = 1.65 + (i % 4) * 0.36 + Math.sin(a * 2.3) * 0.17,
+        z = Math.sin(a) * r;
+      const m = this.flyMatrix;
+      m.position.set(x, y, z);
+      m.rotation.set(0, a, 0);
+      m.scale.set(1, 0.7, 1.4);
+      m.updateMatrix();
+      this.flyBodies.setMatrixAt(i, m.matrix);
+      for (let side = 0; side < 2; side++) {
+        m.position.set(x + (side ? 1 : -1) * 0.04, y + 0.02, z);
+        m.rotation.z = Math.sin(t * 70 + i) * (side ? 1 : -1);
+        m.scale.set(1.4, 0.2, 0.7);
+        m.updateMatrix();
+        this.flyWings.setMatrixAt(i * 2 + side, m.matrix);
+      }
+    }
+    this.flyBodies.instanceMatrix.needsUpdate = true;
+    this.flyWings.instanceMatrix.needsUpdate = true;
   }
   skinRig() {
     // One skinned draw for the figure. The deliberately rigid weights preserve
@@ -1261,9 +1327,19 @@ export class Character {
     this.mouth.rotation.z = mood === 'cry' ? 0.13 : 0;
     this.tears.visible = mood === 'cry';
     this.setMask(n.mask || null);
+    this.setMerch(n.merch || null);
+    this.updateFlies(t, !!n.flies);
   }
   dispose() {
     this.skeleton?.dispose();
+    if (this.merchMesh) {
+      this.merchMesh.material.map.dispose();
+      this.merchMesh.material.dispose();
+    }
+    this.flyBodies?.dispose();
+    this.flyWings?.dispose();
+    this.flyBodies?.material.dispose();
+    this.flyWings?.material.dispose();
     this.root.traverse((o) => o.geometry?.dispose());
     if (this.letterMaterial) {
       this.letterMaterial.map.dispose();

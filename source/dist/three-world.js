@@ -1,6 +1,8 @@
+import { MERCH, mirrorSites } from './appearance.js';
 import * as THREE from 'three/webgpu';
 import {
   Fn,
+  reflector,
   uniform,
   pass,
   screenUV,
@@ -201,6 +203,8 @@ export class ThreeWorld extends World {
       this.sun.shadow.bias = -0.0015;
       this.sun.layers.enable(10);
       this.scene.add(this.sun, this.sun.target);
+      this.sun.layers.enable(1);
+      this.fill.layers.enable(1);
 
       const skyMaterial = new THREE.MeshBasicNodeMaterial({
         side: THREE.BackSide,
@@ -354,25 +358,89 @@ export class ThreeWorld extends World {
   }
 
   updateCamera() {
-    const key = `${this.cx}:${this.cz}:${this.w}:${this.h}:${this.zoom}`;
+    const s = this.playerState;
+    const first = s?.viewMode === 'first';
+    const key = `${this.cx}:${this.cz}:${this.w}:${this.h}:${this.zoom}:${first}:${s?.x}:${s?.z}:${s?.lookYaw}:${s?.lookPitch}:${s?.carHeading}:${s?.driving}`;
     if (key === this.cameraKey) return;
     this.cameraKey = key;
-    const distance = Math.max(28, this.h / (2 * Math.tan((26 * Math.PI) / 180) * this.zoom));
     this.camera.aspect = this.w / Math.max(1, this.h);
-    this.camera.position.set(
-      this.cx + distance * 0.66,
-      distance * 0.36 + 2,
-      this.cz + distance * 0.66,
-    );
-    this.camera.lookAt(this.cx, 1.5, this.cz);
+    this.camera.fov = first ? 72 : 52;
+    this.camera.near = first ? 0.08 : 0.3;
+    if (first) {
+      const yaw = s.driving ? s.carHeading || 0 : s.lookYaw || 0,
+        pitch = s.driving ? -0.06 : s.lookPitch || 0;
+      const x = s.x + (s.driving ? Math.sin(yaw) * 1.65 : 0),
+        z = s.z + (s.driving ? Math.cos(yaw) * 1.65 : 0),
+        y = s.driving ? 2.65 : 2.55;
+      this.camera.position.set(x, y, z);
+      this.camera.lookAt(
+        x + Math.sin(yaw) * Math.cos(pitch),
+        y + Math.sin(pitch),
+        z + Math.cos(yaw) * Math.cos(pitch),
+      );
+    } else {
+      const distance = Math.max(28, this.h / (2 * Math.tan((26 * Math.PI) / 180) * this.zoom));
+      this.camera.position.set(
+        this.cx + distance * 0.66,
+        distance * 0.36 + 2,
+        this.cz + distance * 0.66,
+      );
+      this.camera.lookAt(this.cx, 1.5, this.cz);
+    }
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld();
+  }
+
+  updateMirrors(s) {
+    if (this.mirrorSeed !== s.mirrorSeed) {
+      for (const m of this.mirrors || []) {
+        this.scene.remove(m.frame, m.glass);
+        m.frame.geometry.dispose();
+        m.frame.material.dispose();
+        m.glass.geometry.dispose();
+        m.reflection.dispose();
+        m.mirrorMaterial.dispose();
+        m.idleMaterial.dispose();
+      }
+      this.mirrorSeed = s.mirrorSeed;
+      this.mirrors = mirrorSites(s.mirrorSeed).map((site) => {
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(3.05, 4.05, 0.2),
+          new THREE.MeshStandardMaterial({ color: '#786d51', metalness: 0.5, roughness: 0.45 }),
+        );
+        frame.position.set(site.x, 2.17, site.z - 0.05);
+        frame.castShadow = true;
+        const idleMaterial = new THREE.MeshBasicNodeMaterial({ color: '#9cb5b7' });
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.78, 3.78), idleMaterial);
+        glass.position.set(site.x, 2.17, site.z + 0.06);
+        const reflection = reflector({ resolutionScale: 0.5, bounces: false, samples: 0 });
+        glass.add(reflection.target);
+        const mirrorMaterial = new THREE.MeshBasicNodeMaterial();
+        mirrorMaterial.colorNode = reflection;
+        reflection.reflector.getVirtualCamera(this.camera).layers.enable(1);
+        this.scene.add(frame, glass);
+        return { ...site, frame, glass, reflection, mirrorMaterial, idleMaterial };
+      });
+    }
+    let nearest = null,
+      distance = 24;
+    for (const m of this.mirrors) {
+      const d = Math.hypot(s.x - m.x, s.z - m.z);
+      if (s.z > m.z && d < distance) {
+        nearest = m;
+        distance = d;
+      }
+    }
+    for (const m of this.mirrors)
+      m.glass.material = m === nearest ? m.mirrorMaterial : m.idleMaterial;
+    this.activeMirror = nearest;
   }
 
   project(x, y, z) {
     if (!this.camera) return super.project(x, y, z);
     this.updateCamera();
     const p = this.view.set(x, y, z).project(this.camera);
+    if (this.playerState?.viewMode === 'first' && (p.z > 1 || p.z < -1)) return [-100000, -100000];
     return [(p.x + 1) * this.w * 0.5, (1 - p.y) * this.h * 0.5];
   }
 
@@ -409,15 +477,33 @@ export class ThreeWorld extends World {
       key = `visitor-${n.id}`;
       design = CAST[7];
     }
+    if (n.id === 0 && MERCH[n.merch]) design = { ...design, shirt: MERCH[n.merch].color };
     let actor = this.people.get(key);
+    if (actor && n.id === 0 && actor.merchAppearance !== (n.merch || null)) {
+      this.scene.remove(actor.root);
+      actor.dispose();
+      this.people.delete(key);
+      actor = null;
+    }
     if (!actor) {
       actor = new Character(design);
+      actor.merchAppearance = n.merch || null;
       this.people.set(key, actor);
       this.scene.add(actor.root);
     }
     actor.root.visible = true;
     actor.seenAt = t;
-    actor.update(n.id === 200 && n.skin === '#303a35' ? { ...n, mask: 'cloth' } : n, t);
+    actor.update(
+      n.id === 200 && n.skin === '#303a35' ? { ...n, mask: 'cloth' } : n,
+      t,
+      n.id === 0 && this.playerState?.viewMode === 'first'
+        ? { heading: this.playerState.lookYaw }
+        : {},
+    );
+    if (n.id === 0)
+      actor.root.traverse((object) =>
+        object.layers.set(this.playerState?.viewMode === 'first' ? 1 : 0),
+      );
   }
 
   securityStill(c, w, h, incident) {
@@ -444,6 +530,7 @@ export class ThreeWorld extends World {
       this.lastSize = size;
     }
     this.updateCamera();
+    this.updateMirrors(s);
     for (const actor of this.people.values()) actor.root.visible = actor.seenAt === this.time;
     this.dynamicMesh.geometry.dispose();
     this.dynamicMesh.geometry = this.geometry(this.polys.slice(this.static.length));

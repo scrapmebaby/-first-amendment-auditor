@@ -33,3 +33,10 @@ On foot: WASD/arrows walk relative to the screen; Shift jogs. Clicking a
 destination routes around buildings. In the car: W/↑ gas, S/↓ brake then
 reverse, A/D or ←/→ steer, Shift hard brake. Stop before pressing E to exit.
 Touch controls show Gas and Brake while driving. Old saves remain compatible.
+
+## First-person and mirrors (v0.7)
+
+Press V or First person to switch views; drag to look and use Q/R to turn.
+Find mirror walks you to a nearby live mirror. Purchased shirts, masks and
+flies appear in your reflection. Six mirror locations persist with each save.
+First-person and live mirrors require WebGPU or WebGL2.

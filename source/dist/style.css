@@ -1682,3 +1682,69 @@ dialog::backdrop {
     margin-top: 15px;
   }
 }
+
+.view-tools {
+  position: absolute;
+  right: 16px;
+  top: 114px;
+  display: flex;
+  gap: 5px;
+  z-index: 5;
+}
+.view-tools button {
+  background: #f4f1e8e8;
+  color: #354233;
+  border: 1px solid #6d786744;
+  border-radius: 5px;
+  padding: 8px 10px;
+  font: 600 11px 'DM Sans';
+  cursor: pointer;
+}
+.view-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: #243126bb;
+  color: #f4f1e8;
+  font-size: 11px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff9;
+  font: 18px monospace;
+  pointer-events: none;
+}
+.view-tools .hidden,
+.view-hint.hidden,
+.crosshair.hidden {
+  display: none;
+}
+@media (max-width: 650px) {
+  .view-tools {
+    top: 105px;
+    right: 8px;
+    gap: 3px;
+  }
+  .view-tools button {
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+  .view-hint {
+    bottom: 155px;
+    font-size: 10px;
+  }
+  .view-tools .look-button {
+    min-width: 32px;
+  }
+  #game {
+    touch-action: none;
+  }
+}

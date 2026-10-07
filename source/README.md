@@ -64,7 +64,7 @@ Examples: Pat's loosened tie and heavy glasses; Morgan's narrow cardigan silhoue
 - Gameplay zoom now reaches closer for character detail. Save files and economy rules remain compatible. The engage button now visibly respects its existing cooldown instead of silently ignoring quick repeat clicks.
 - The original Canvas-only compatibility renderer and reconstructed CCTV stills retain simplified representations. The detailed cast is available in the Three.js WebGPU and WebGL 2 paths.
 
-`cast-lineup.png` is a review sheet made from actual character-viewer renders. `tools/cast-contact-sheet.py` assembles those screenshots (Pillow is needed only to regenerate that QA sheet). `dist/characters.js` contains the complete cast designs, geometry and animation. `dist/cast-studio.js` contains the inspection viewer. No external asset requests or new runtime dependencies were added for this work. Playable gender selection, flies, weekly assistance and bathroom mechanics remain pending.
+`cast-lineup.png` is a review sheet made from actual character-viewer renders. `tools/cast-contact-sheet.py` assembles those screenshots (Pillow is needed only to regenerate that QA sheet). `dist/characters.js` contains the complete cast designs, geometry and animation. `dist/cast-studio.js` contains the inspection viewer. No external asset requests or new runtime dependencies were added for this work. Playable gender selection, fly-related penalties, weekly assistance and bathroom mechanics remain pending. Cosmetic flies are implemented in v0.7.
 
 ## Three.js atmosphere (v0.3)
 
@@ -249,3 +249,23 @@ switch. Conversations, recording and police scenes fade decorative audio
 down. Driving suppresses birds/music and lowers wind so the sputtering car
 remains prominent. Master Sound/mute and background/menu pause still apply.
 No external audio assets or music service. Gameplay video exports stay silent.
+
+
+## v0.7 first-person and mirrors
+
+Press V or use First person to switch views. Drag to look; Q/R turn on foot.
+Movement follows your view on foot; driving keeps the existing vehicle controls.
+Find mirror walks to the nearest mirror and faces it. Six mirrors are placed
+per save: one near the start and five chosen from safe town locations. The layout
+and view preference persist in saves; older saves receive a stable layout.
+
+Mirrors reflect the live scene, your character, equipped mask, shirt and orbiting
+flies. Buy Press for Views or Taxpayer Funded shirts in the shop; owned shirts
+can be equipped or removed there. Clothing is cosmetic. Flies are currently
+visual, with no relocation penalty. First-person uses a reflection-only character
+layer so your face does not obstruct the main camera.
+
+To limit GPU cost, only the nearest mirror in front of the player within 24
+world units renders a live reflection, at half resolution. First-person and live
+mirrors require WebGPU or WebGL2; those controls are disabled in Canvas fallback.
+No account, network service or external character assets are needed.

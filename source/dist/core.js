@@ -1,7 +1,22 @@
+import { MERCH } from './appearance.js';
 export const VERSION = 1;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const money = (v) => `${v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`;
 export const ITEMS = [
+  {
+    id: 'merchPress',
+    name: 'Press for Views shirt',
+    price: 18,
+    icon: '♜',
+    desc: 'Your own merch. Automatically equips; visible in town and mirrors. No revenue bonus.',
+  },
+  {
+    id: 'merchTax',
+    name: 'Taxpayer Funded shirt',
+    price: 28,
+    icon: '♜',
+    desc: 'An uncomfortably honest shirt. Automatically equips; visible in mirrors. No revenue bonus.',
+  },
   {
     id: 'camera',
     name: 'Actual camera',
@@ -93,6 +108,11 @@ export function fresh() {
     driving: false,
     gear: [],
     mask: null,
+    merch: null,
+    viewMode: 'overhead',
+    lookYaw: Math.PI,
+    lookPitch: 0,
+    mirrorSeed: Math.floor(Math.random() * 1e9),
     spray: 0,
     clips: [],
     ledger: [],
@@ -149,6 +169,7 @@ export function buy(s, id) {
     return { ok: false, text: 'Even the credit card has standards. Credit limit: $350.' };
   transaction(s, -item.price, `Gear: ${item.name}`);
   if (!s.gear.includes(id)) s.gear.push(id);
+  if (MERCH[id]) s.merch = id;
   if (id === 'spray') s.spray += 3;
   if (id === 'clown' || id === 'poop') s.mask = id;
   return { ok: true, text: `${item.name} acquired. Financial wisdom not included.` };
@@ -238,6 +259,21 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (o?.viewMode !== undefined && !['overhead', 'first'].includes(o.viewMode)) return false;
+  if (o?.lookYaw !== undefined && (!Number.isFinite(o.lookYaw) || Math.abs(o.lookYaw) > Math.PI))
+    return false;
+  if (o?.lookPitch !== undefined && (!Number.isFinite(o.lookPitch) || Math.abs(o.lookPitch) > 1))
+    return false;
+  if (
+    o?.mirrorSeed !== undefined &&
+    (!Number.isInteger(o.mirrorSeed) || o.mirrorSeed < 0 || o.mirrorSeed > 1e9)
+  )
+    return false;
+  if (
+    o?.merch != null &&
+    (!Object.hasOwn(MERCH, o.merch) || !Array.isArray(o.gear) || !o.gear.includes(o.merch))
+  )
+    return false;
   if (o?.music !== undefined && typeof o.music !== 'boolean') return false;
   if (
     o?.carHeading !== undefined &&
@@ -368,6 +404,7 @@ export function migrateSave(o) {
   return {
     ...base,
     ...o,
+    mirrorSeed: o.mirrorSeed ?? 1977,
     moving: false,
     carSpeed: 0,
     route: undefined,
