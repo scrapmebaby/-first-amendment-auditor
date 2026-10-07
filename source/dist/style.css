@@ -2294,3 +2294,104 @@ body.immersive {
     left: 126px;
   }
 }
+
+.conversation {
+  position: absolute;
+  z-index: 9;
+  left: 50%;
+  top: 190px;
+  transform: translateX(-50%);
+  width: min(430px, 48vw);
+  background: #17251eef;
+  color: #f8f6e9;
+  border: 1px solid #ffffff35;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 20px #0003;
+}
+.conversation.hidden {
+  display: none;
+}
+.conversation-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  border-bottom: 1px solid #ffffff20;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.conversation-head button {
+  color: #eef2dc;
+  font-size: 11px;
+  padding: 7px 10px;
+  border: 0;
+  min-height: 34px;
+}
+#conversationLines {
+  max-height: 178px;
+  overflow: auto;
+  padding: 3px 12px;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+#conversationLines p {
+  margin: 8px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+#conversationLines strong {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.7px;
+  color: #c9e990;
+  margin-bottom: 2px;
+}
+#conversationLines .civilian-line strong {
+  color: #a9dbea;
+}
+.conversation.collapsed #conversationLines {
+  display: none;
+}
+@media (pointer: coarse), (max-width: 750px) {
+  .immersive #speech {
+    display: none;
+  }
+  .conversation {
+    top: 315px;
+    left: 12px;
+    right: 12px;
+    transform: none;
+    width: auto;
+  }
+  #conversationLines {
+    max-height: min(180px, 24dvh);
+  }
+  .conversation-head button {
+    min-height: 40px;
+  }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  .conversation {
+    left: 178px;
+    right: 232px;
+    top: 80px;
+    width: auto;
+  }
+  #conversationLines {
+    max-height: calc(100dvh - 170px);
+  }
+  #conversationLines p {
+    font-size: 12px;
+  }
+}
+@media (max-width: 750px) and (min-height: 501px) {
+  .conversation {
+    top: auto;
+    bottom: 250px;
+  }
+  .immersive #game:has(.conversation:not(.hidden)) .toast {
+    top: 130px;
+    bottom: auto;
+  }
+}

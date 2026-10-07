@@ -71,3 +71,10 @@ compact panel. Phones use drag-to-look without duplicate turn arrows.
 
 The map sits under the transparent phone thumbstick. Tap the speaker beside
 the menu to enable sound; later taps also recover suspended browser audio.
+
+## Two-way conversations (v0.10)
+
+Engage starts auditor/civilian banter, even before recording. A collapsible
+conversation panel keeps speakers and replies readable on phones. 148 new
+original lines use contextual pools without immediate repetition.
+[Research notes and transcript sources](source/DIALOGUE-SOURCES.txt).

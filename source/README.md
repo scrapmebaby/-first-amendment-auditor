@@ -355,3 +355,24 @@ context during a tap; subsequent pointer releases/clicks/key presses retry
 suspended or interrupted playback. Capture-phase input also sees joystick taps.
 Where supported, the browser audio session uses playback mode. Device media
 volume and browser restrictions still apply; menus intentionally pause audio.
+
+## v0.10 two-way conversations
+
+Engage starts an original, coherent four-turn exchange: auditor, civilian,
+auditor, civilian. It works without recording; only recorded encounters affect
+the existing filming/escalation economy. Ordinary residents pause briefly to
+answer, but can still flee or react to an incident. Walking out of range,
+entering the car, police involvement or an incompatible reaction cancels
+remaining banter. Engaging again begins another exchange.
+
+The fixed conversation panel names each speaker and keeps the latest four
+lines readable. Hide/Show collapses it; it fades away after inactivity. Phones
+use this panel instead of the floating one-line bubble. Actual conversation
+lines enter recorded clip event histories; video subtitles still show the
+current line. The game does not add synthesized or recorded speech voices.
+
+37 authored exchanges add 148 lines to the existing 200 event-driven lines.
+Location, weather, reputation and patience select contextual pools. Each pool
+is shuffled and exhausted before repeating. Profanity controls apply to both
+sides. Research sources and limitations are in DIALOGUE-SOURCES.txt; no external
+transcripts, names, recordings or runtime dialogue services are bundled.

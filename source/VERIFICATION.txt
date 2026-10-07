@@ -205,3 +205,14 @@ v0.9.3 map/audio verification
   after explicit context suspension, a joystick tap resumed it.
 - Offline waveform checks passed for outdoor ambience/music and car exhaust.
 - Portrait/landscape screenshots inspected. Real iPhone audio remains untested.
+
+v0.10 conversation verification
+- Unit tests: 148 paired lines, contextual selection, no-repeat pools, clean
+  language and phone-friendly line lengths.
+- Mobile browser: four alternating turns before filming, labeled transcript,
+  Hide/Show, recorded auditor/civilian events and portrait/landscape layout.
+- Existing language/settings/import checks passed after the dialogue change.
+- Screenshots inspected in Canvas compatibility mode. No voice acting added.
+- Encounter regression checks passed: police arrival, recorded arrest/escort,
+  claim, playable footage, crying and thrown cup. The browser test now waits
+  for Engage readiness instead of sending inputs during its cooldown.

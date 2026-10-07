@@ -45,6 +45,7 @@ const fs = require('node:fs');
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.45));
   await page.keyboard.press('f');
   for (let i = 0; i < 5; i++) {
+    await page.waitForFunction(() => !document.getElementById('touchEngage').disabled);
     await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
   }
@@ -109,10 +110,12 @@ const fs = require('node:fs');
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.6));
   await page.keyboard.press('f');
   for (let i = 0; i < 3; i++) {
+    await page.waitForFunction(() => !document.getElementById('touchEngage').disabled);
     await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
   }
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.2));
+  await page.waitForFunction(() => !document.getElementById('touchEngage').disabled);
   await page.keyboard.press('Space');
   await page.waitForTimeout(1500);
   await page.keyboard.press('f');
@@ -128,10 +131,12 @@ const fs = require('node:fs');
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.45));
   await page.keyboard.press('f');
   for (let i = 0; i < 4; i++) {
+    await page.waitForFunction(() => !document.getElementById('touchEngage').disabled);
     await page.keyboard.press('Space');
     await page.waitForTimeout(1400);
   }
   await page.evaluate(() => auditorDebug.setEncounterRoll(0.35));
+  await page.waitForFunction(() => !document.getElementById('touchEngage').disabled);
   await page.keyboard.press('Space');
   await page.waitForTimeout(1500);
   await page.keyboard.press('f');

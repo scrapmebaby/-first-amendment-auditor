@@ -1,3 +1,4 @@
+import { Banter } from './banter.js';
 import { TouchInput } from './touch-input.js';
 import { Controller } from './controller.js';
 import { MERCH, mirrorSites, viewMovement } from './appearance.js';
@@ -168,6 +169,9 @@ let npcs = npcSpawns.map(([x, z], i) => ({
   inCustody: false,
 }));
 function resetLocals() {
+  activeBanter = null;
+  conversationLines.length = 0;
+  $('conversation').classList.add('hidden');
   pendingBarks.length = 0;
   for (const n of npcs)
     Object.assign(n, {
@@ -199,11 +203,98 @@ const line = (event, n = target) =>
     place: locationAt(n?.x ?? s.x, n?.z ?? s.z).name,
     weather: world.atmosphere.current,
   });
-let nextPhrase = line('auditor'),
-  ambientClock = 0;
+let ambientClock = 0;
 const pendingBarks = [];
+const banter = new Banter();
+let activeBanter = null;
+const conversationLines = [];
+let conversationUntil = 0;
+function renderConversation(append = false) {
+  const list = $('conversationLines');
+  if (!append) list.replaceChildren();
+  for (const item of conversationLines.slice(append ? -1 : -4)) {
+    const row = document.createElement('p'),
+      speaker = document.createElement('strong'),
+      words = document.createElement('span');
+    row.className = item.auditor ? 'auditor-line' : 'civilian-line';
+    speaker.textContent = item.speaker;
+    words.textContent = language(item.text, s.profanity);
+    row.append(speaker, words);
+    list.append(row);
+  }
+  while (list.childElementCount > 4) list.firstElementChild.remove();
+  list.scrollTop = list.scrollHeight;
+}
+function conversationLine(n, text) {
+  const auditor = n === s;
+  conversationLines.push({
+    auditor,
+    speaker: auditor
+      ? 'YOU · AUDITOR'
+      : /^OFFICER:/.test(text)
+        ? 'OFFICER'
+        : n.name?.split(' · ')[0] || 'LOCAL',
+    text: text.replace(/^(?:AUDITOR|OFFICER):\s*/, '').replace(/^[“”]|[“”]$/g, ''),
+  });
+  if (conversationLines.length > 12) conversationLines.shift();
+  renderConversation(true);
+  conversationUntil = world.time + 15;
+  $('conversation').classList.remove('hidden');
+}
+function tickBanter() {
+  const b = activeBanter;
+  if (!b) return;
+  if (
+    policeEvent ||
+    s.driving ||
+    b.n.inCustody ||
+    b.n.flee > 0 ||
+    Math.hypot(b.n.x - s.x, b.n.z - s.z) > 10 ||
+    (b.recorded && (!record || record.npcId !== b.n.id))
+  ) {
+    activeBanter = null;
+    return;
+  }
+  if (b.turn >= 4) {
+    activeBanter = null;
+    return;
+  }
+  if (world.time < b.at || (b.recorded && b.turn === 1)) return;
+  const actor = b.turn % 2 === 0 ? s : b.n;
+  const text = b.lines[b.turn++];
+  say(actor, text);
+  captured((actor === s ? 'AUDITOR: ' : b.n.name + ': ') + text);
+  b.at = world.time + 3.4;
+}
+function startBanter(n) {
+  if (!activeBanter || activeBanter.n !== n) {
+    conversationLines.length = 0;
+    $('conversationLines').replaceChildren();
+  }
+  const lines = banter.pick({
+    place: locationAt(n.x, n.z).name,
+    weather: world.atmosphere.current,
+    reputation: s.campaign.reputation,
+    patience: n.patience,
+    explicit: s.profanity,
+  });
+  n.pauseUntil = Math.max(n.pauseUntil || 0, world.time + 9);
+  activeBanter = { n, lines, turn: 1, at: world.time + 1.3, recorded: !!record };
+  say(s, 'AUDITOR: “' + lines[0] + '”');
+  captured('AUDITOR: ' + lines[0]);
+}
 function bark(n, event) {
-  say(n, '“' + line(event, n) + '”');
+  let text;
+  if (activeBanter?.n === n && activeBanter.turn === 1 && ['plea', 'argue'].includes(event)) {
+    text = activeBanter.lines[1];
+    activeBanter.turn = 2;
+    activeBanter.at = world.time + 3.4;
+  } else {
+    if (activeBanter?.n === n) activeBanter = null;
+    text = line(event, n);
+  }
+  say(n, '“' + text + '”');
+  captured(n.name + ': ' + text);
 }
 function scheduleBark(n, event, delay = 2) {
   pendingBarks.push({ n, event, at: world.time + delay });
@@ -217,6 +308,7 @@ function notify(t) {
 }
 function say(n, text) {
   text = language(text, s.profanity);
+  conversationLine(n, text);
   if (
     n.id >= 1 &&
     n.id <= CAST.length &&
@@ -325,6 +417,7 @@ function toggleFilm() {
   updateUI();
 }
 function stopRecording() {
+  activeBanter = null;
   pendingBarks.length = 0;
   if (!record) return;
   const c = finishClip(s, record);
@@ -369,7 +462,8 @@ function engage() {
     return;
   }
   if (!record) {
-    notify('Start recording first. Otherwise this is just a weird conversation.');
+    startBanter(n);
+    updateUI();
     return;
   }
   n.patience = clamp(n.patience - (s.mask ? 23 : 16), 0, 100);
@@ -378,10 +472,8 @@ function engage() {
   s.society = clamp(s.society - 1, -100, 0);
   s.campaign.reputation = clamp(s.campaign.reputation + 0.6, 0, 100);
   progressCareer(s).forEach(showCampaignNotice);
-  captured('AUDITOR: ' + nextPhrase);
-  say(s, 'AUDITOR: “' + nextPhrase + '”');
+  startBanter(n);
   scheduleBark(n, 'react', 1.3);
-  nextPhrase = line('auditor');
   sound(230, 0.06);
   save();
   updateUI();
@@ -1140,7 +1232,7 @@ function settings() {
   $('languageChoice').onchange = (e) => {
     s.profanity = e.target.value === 'explicit';
     $('speech').textContent = language($('speech').textContent, s.profanity);
-    nextPhrase = line('auditor');
+    renderConversation();
     save();
     updateUI();
   };
@@ -1533,7 +1625,7 @@ function updateUI() {
   $('film').classList.toggle('recording', !!record);
   $('touchFilm').textContent = record ? '■ Stop' : '◉ Film';
   $('touchEngage').disabled = !target || s.driving || engageCooldown > 0;
-  $('engage').textContent = '“' + language(nextPhrase, s.profanity) + '”';
+  $('engage').textContent = 'Engage · talk to local';
   $('engage').disabled = !target || s.driving || engageCooldown > 0;
   $('car').innerHTML = s.driving ? 'Exit car <kbd>E</kbd>' : 'Enter car <kbd>E</kbd>';
   $('mode').textContent = s.driving ? (s.carSpeed < -0.1 ? 'REVERSING' : 'DRIVING') : 'ON FOOT';
@@ -1897,6 +1989,8 @@ function move(dt) {
 }
 
 function simulate(dt) {
+  tickBanter();
+  if (world.time > conversationUntil) $('conversation').classList.add('hidden');
   for (let i = pendingBarks.length - 1; i >= 0; i--) {
     const b = pendingBarks[i];
     if (world.time >= b.at) {
@@ -2045,6 +2139,12 @@ function simulate(dt) {
 $('cast').onclick = () => showCast();
 $('inspectLocal').onclick = () => showCast(target?.id || 0);
 $('campaign').onclick = campaignMenu;
+$('conversation').addEventListener('wheel', (e) => e.stopPropagation(), { passive: true });
+$('conversationToggle').onclick = () => {
+  const collapsed = $('conversation').classList.toggle('collapsed');
+  $('conversationToggle').setAttribute('aria-expanded', String(!collapsed));
+  $('conversationToggle').textContent = collapsed ? 'Show' : 'Hide';
+};
 $('touchFilm').onclick = toggleFilm;
 $('touchEngage').onclick = engage;
 $('touchCar').onclick = car;
@@ -2234,6 +2334,7 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  conversation: () => ({ lines: structuredClone(conversationLines), active: !!activeBanter }),
   audio: () => ({
     enabled: !muted,
     state: townAudio.ctx?.state || 'not-started',

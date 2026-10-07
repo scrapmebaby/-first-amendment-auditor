@@ -1,0 +1,34 @@
+Dialogue research notes — v0.10 (2026-10-07)
+
+The game's exchanges are original fictional satire. No transcripts, audio,
+real names, or identifiable encounters are reproduced in the game. Sources
+were used to identify recurring situations, not as a dialogue dataset or as
+legal authority. No network service or AI generation runs while playing.
+
+1. "Who Hired You?" — HonorYourOath, third-party transcript indexed by
+   1A Intelligence Desk:
+   https://1a.auditorintel.com/?video_id=WauSOXkhG3Y&view=transcript
+   The indexed exchange illustrates disagreement over public sidewalks versus
+   business frontage, suspicions about motives, and police mediation.
+   The transcript has apparent recognition errors; its speaker assignments and
+   legal statements were not independently verified against the original video.
+
+2. "Assault on Camera: I Got You Hitting Me!" — CT3 compilation, third-party
+   transcript indexed by 1A Intelligence Desk:
+   https://1a.auditorintel.com/?video_id=Pt6Vg7GSnRM&view=transcript
+   The opening excerpt contains disputes about identification, security and
+   demands to cite a law. It includes commentary and possible transcription
+   errors. Only recurring conversational themes informed this game's writing.
+
+3. American Library Association, "Auditing the First Amendment at Your Public
+   Library" (2019):
+   https://www.oif.ala.org/auditing-the-first-amendment-at-your-public-library/
+   Background on library patrons' privacy, filming and interruptions. This is
+   institutional guidance, not an encounter transcript. It informed the library
+   setting and the distinction between staff, patrons and private information.
+
+Implementation: 37 authored four-turn exchanges (148 lines), plus the existing
+200 event-driven lines. Context chooses library, cafe, civic, street, rain,
+recognized or heated pools. Shuffled bags avoid reuse until a pool is exhausted.
+Each exchange stays paired so replies answer the preceding line. Real gameplay
+reactions (leaving, music, crying, police, violence) can interrupt the banter.
