@@ -341,3 +341,17 @@ buttons are hidden in first-person and scroll no longer changes its zoom.
 View/mirror and street actions share one two-row panel. Touch devices use
 drag-to-look without duplicate turn buttons. Portrait notices sit below the
 right-side panel. Desktop turn buttons remain available.
+
+## v0.9.3 shared map and phone audio
+
+On touch layouts, the minimap sits beneath the movement pad with a transparent
+stick and outlined thumb marker. The map stays visible in portrait/landscape;
+desktop layouts retain their separate minimap. Map rendering cannot intercept
+stick input.
+
+The speaker icon beside the menu enables/mutes sound and saves the preference.
+Sound remains off until enabled. Audio initialization explicitly resumes the
+context during a tap; subsequent pointer releases/clicks/key presses retry
+suspended or interrupted playback. Capture-phase input also sees joystick taps.
+Where supported, the browser audio session uses playback mode. Device media
+volume and browser restrictions still apply; menus intentionally pause audio.

@@ -2226,3 +2226,71 @@ body.immersive {
     width: calc(100% - 40px);
   }
 }
+
+/* The map shares the movement pad instead of consuming another corner. */
+#soundToggle {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 12px;
+}
+#soundToggle svg {
+  pointer-events: none;
+}
+@media (pointer: coarse), (max-width: 750px) {
+  .immersive #thumbstick {
+    background: transparent;
+    border-color: #ffffff70;
+  }
+  .immersive #thumbstick .minimap {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 14px 0;
+    border: 0;
+    border-radius: 24px;
+    background: transparent;
+    box-shadow: none;
+    opacity: 0.82;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .immersive #thumbstick .minimap canvas {
+    width: 100%;
+    height: 112px;
+    border-radius: 16px;
+  }
+  .immersive #thumbstick .minimap span {
+    display: none;
+  }
+  .immersive #thumbstick .minimap::after {
+    content: 'N ↑';
+    position: absolute;
+    top: 0;
+    right: 9px;
+    font-size: 9px;
+    color: #fff;
+    text-shadow: 0 1px 3px #000;
+  }
+  .immersive #thumbstick .stick-ring {
+    z-index: 1;
+    border-color: #ffffff60;
+  }
+  .immersive #stickKnob {
+    z-index: 2;
+    background: transparent;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 4px #0007;
+  }
+}
+@media (max-width: 750px) and (min-height: 501px) {
+  .immersive .play-status {
+    left: 126px;
+  }
+}

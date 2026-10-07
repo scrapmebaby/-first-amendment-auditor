@@ -66,3 +66,8 @@ control gas, brake/reverse and stopping. Portrait and landscape are supported.
 The hamburger icon opens the menu. The fullscreen request button is removed.
 Zoom hides in first-person, and the right-side view/street actions share one
 compact panel. Phones use drag-to-look without duplicate turn arrows.
+
+## Shared map and sound (v0.9.3)
+
+The map sits under the transparent phone thumbstick. Tap the speaker beside
+the menu to enable sound; later taps also recover suspended browser audio.

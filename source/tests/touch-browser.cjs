@@ -24,9 +24,33 @@ const assert = require('node:assert/strict'),
     page.setDefaultTimeout(60000);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    await page.addInitScript(() => localStorage.setItem('auditor-graphics', 'balanced'));
+    await page.addInitScript(() => {
+      localStorage.setItem('auditor-graphics', 'balanced');
+      const NativeAudioContext = window.AudioContext;
+      window.AudioContext = class extends NativeAudioContext {
+        constructor(...args) {
+          super(...args);
+          window.testAudioContext = this;
+        }
+      };
+    });
     await page.goto('http://127.0.0.1:' + server.address().port);
     await page.waitForFunction(() => window.auditorDebug);
+    await page.click('#soundToggle');
+    await page.waitForFunction(
+      () =>
+        auditorDebug.audio().enabled &&
+        auditorDebug.audio().state === 'running' &&
+        auditorDebug.audio().gain > 0.1,
+    );
+    await page.evaluate(() => testAudioContext.suspend());
+    await page.locator('#thumbstick').tap();
+    await page.waitForFunction(() => auditorDebug.audio().state === 'running');
+    assert.equal(await page.locator('#thumbstick .minimap').count(), 1);
+    assert.equal(
+      await page.locator('#stickKnob').evaluate((e) => getComputedStyle(e).backgroundColor),
+      'rgba(0, 0, 0, 0)',
+    );
     const cdp = await page.context().newCDPSession(page);
     const send = (type, points) =>
       cdp.send('Input.dispatchTouchEvent', { type, touchPoints: points });
@@ -95,10 +119,11 @@ const assert = require('node:assert/strict'),
     await page.waitForTimeout(300);
     assert.ok(await page.locator('#thumbstick').isVisible());
     assert.ok(await page.locator('[data-pedal=gas]').isVisible());
+    assert.ok(await page.locator('#thumbstick .minimap').isVisible());
     await page.screenshot({ path: root + '/preview-touch-landscape.png' });
     assert.deepEqual(errors, []);
     console.log(
-      'Real browser multitouch: simultaneous move/look, independent releases, cancellation, menu reset, steering+gas, brake and landscape passed. Physical iPhone untested.',
+      'Map integration, transparent stick, audio tap activation/recovery and real browser multitouch: simultaneous move/look, independent releases, cancellation, menu reset, steering+gas, brake and landscape passed. Physical iPhone untested.',
     );
   } finally {
     await browser.close();

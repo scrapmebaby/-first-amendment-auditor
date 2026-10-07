@@ -191,12 +191,17 @@ export class TownAudio {
   constructor() {
     this.ctx = null;
   }
-  start() {
-    if (this.ctx) {
-      this.ctx.resume();
-      return;
-    }
+  async start() {
     try {
+      if (navigator.audioSession) {
+        try {
+          navigator.audioSession.type = 'playback';
+        } catch {}
+      }
+      if (this.ctx && this.ctx.state !== 'closed') {
+        if (this.ctx.state !== 'running') await this.ctx.resume();
+        return this.ctx.state === 'running';
+      }
       const a = (this.ctx = new (window.AudioContext || window.webkitAudioContext)());
       this.master = a.createGain();
       this.master.gain.value = 0.5;
@@ -226,10 +231,14 @@ export class TownAudio {
       this.siren.connect(this.sirenGain);
       this.sirenGain.connect(this.master);
       this.siren.start();
-    } catch {}
+      if (a.state !== 'running') await a.resume();
+      return a.state === 'running';
+    } catch {
+      return false;
+    }
   }
   update(s, w, patrol, muted, paused, conversation = false) {
-    if (!this.ctx) return;
+    if (!this.ctx || !this.master) return;
     const a = this.ctx,
       t = a.currentTime;
     this.master.gain.setTargetAtTime(muted || paused ? 0 : 0.5, t, 0.15);

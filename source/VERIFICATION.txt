@@ -197,3 +197,11 @@ v0.9.2 HUD verification
   screenshots inspected. Controller/menu checks also passed, including absence
   of the fullscreen button and hidden first-person zoom controls.
 - JavaScript syntax/build checks passed. Physical iOS testing remains pending.
+
+v0.9.3 map/audio verification
+- Mobile Chromium: map is nested within the thumbstick, transparent marker,
+  landscape map visibility, all previous simultaneous touch/steering checks.
+- Speaker tap enabled a running Web Audio context with nonzero master gain;
+  after explicit context suspension, a joystick tap resumed it.
+- Offline waveform checks passed for outdoor ambience/music and car exhaust.
+- Portrait/landscape screenshots inspected. Real iPhone audio remains untested.

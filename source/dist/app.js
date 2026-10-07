@@ -68,6 +68,14 @@ const touchInput = new TouchInput($('thumbstick'), $('stickKnob'), [
   ...document.querySelectorAll('[data-pedal]'),
 ]);
 const menuOpen = () => $('modal').open || $('gameMenu').open;
+const mapHost = document.querySelector('.minimap');
+const touchLayout = matchMedia('(pointer: coarse), (max-width: 750px)');
+function placeMap() {
+  (touchLayout.matches ? $('thumbstick') : $('game')).append(mapHost);
+  touchInput.reset();
+}
+placeMap();
+touchLayout.addEventListener('change', placeMap);
 const SAVE = 'first-amendment-auditor-v1';
 let s = fresh(),
   saveFailed = false,
@@ -1450,6 +1458,10 @@ function paperwork() {
 }
 
 function updateUI() {
+  $('soundToggle').setAttribute('aria-pressed', String(!muted));
+  $('soundToggle').setAttribute('aria-label', muted ? 'Enable sound' : 'Mute sound');
+  $('soundToggle').title = muted ? 'Enable sound' : 'Mute sound';
+  $('soundSlash').style.display = muted ? '' : 'none';
   $('touchPedals').classList.toggle('hidden', !s.driving);
   $('stickLabel').textContent = s.driving ? 'STEER' : 'MOVE · PUSH FARTHER TO JOG';
   $('touchLookHint').classList.toggle('hidden', s.viewMode !== 'first' || s.driving);
@@ -2159,13 +2171,29 @@ window.addEventListener('resize', () => {
   touchInput.reset();
   lookDrag = null;
 });
-window.addEventListener(
-  'pointerdown',
-  () => {
-    if (!muted) townAudio.start();
-  },
-  { once: true },
-);
+// Capture also sees joystick touches, whose handlers stop bubbling. Touch release
+// is a user activation on mobile; retries cover Safari interruption/backgrounding.
+function unlockAudio() {
+  if (!muted && townAudio.ctx?.state !== 'running') void townAudio.start();
+  if (!muted && sound.ctx && sound.ctx.state !== 'running') sound.ctx.resume().catch(() => {});
+}
+for (const event of ['pointerup', 'click', 'keydown'])
+  window.addEventListener(event, unlockAudio, { capture: true });
+$('soundToggle').onclick = async () => {
+  muted = !muted;
+  s.sound = !muted;
+  save();
+  updateUI();
+  if (!muted) {
+    const running = await townAudio.start();
+    if (!muted)
+      notify(
+        running
+          ? 'Sound on · birds, wind and engine. Adjust your device media volume.'
+          : 'Audio is blocked. Tap sound again to retry.',
+      );
+  }
+};
 function frame(now) {
   townAudio.update(
     s,
@@ -2206,6 +2234,11 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  audio: () => ({
+    enabled: !muted,
+    state: townAudio.ctx?.state || 'not-started',
+    gain: townAudio.master?.gain.value || 0,
+  }),
   touch: () => ({
     x: touchInput.x,
     y: touchInput.y,
