@@ -1940,3 +1940,177 @@ body.immersive {
     display: none;
   }
 }
+
+/* Two-thumb controls work in portrait and landscape, including wide phones. */
+.touch-pedals,
+.touch-look-hint {
+  display: none;
+}
+@media (pointer: coarse), (max-width: 750px) {
+  .immersive #game {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .immersive .touch-controls {
+    display: block;
+    position: absolute;
+    z-index: 12;
+    bottom: max(72px, calc(env(safe-area-inset-bottom) + 60px));
+    left: max(16px, env(safe-area-inset-left));
+    width: 144px;
+    text-align: center;
+    touch-action: none;
+  }
+  #thumbstick {
+    width: 144px;
+    height: 144px;
+    position: relative;
+    border-radius: 50%;
+    background: #20362955;
+    border: 1px solid #ffffff55;
+    touch-action: none;
+  }
+  .stick-ring {
+    position: absolute;
+    inset: 25px;
+    border: 1px solid #ffffff40;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+  #stickKnob {
+    position: absolute;
+    left: 49px;
+    top: 49px;
+    width: 46px;
+    height: 46px;
+    background: #f4f5dbe8;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 3px 15px #0004;
+    pointer-events: none;
+  }
+  #stickLabel {
+    display: block;
+    color: #fff;
+    text-shadow: 0 1px 3px #000;
+    font-size: 9px;
+    margin-top: 8px;
+    pointer-events: none;
+  }
+  .immersive .mobile-actions {
+    display: flex;
+    position: absolute;
+    left: max(16px, env(safe-area-inset-left));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    z-index: 13;
+    gap: 6px;
+  }
+  .immersive .mobile-actions button {
+    min-height: 48px;
+    min-width: 52px;
+    padding: 10px;
+    background: #f6f5efed;
+  }
+  .touch-pedals:not(.hidden) {
+    display: flex;
+    align-items: flex-end;
+    position: absolute;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(88px, calc(env(safe-area-inset-bottom) + 75px));
+    z-index: 12;
+    gap: 8px;
+  }
+  .touch-pedals button {
+    min-width: 55px;
+    height: 64px;
+    background: #f6f5efee;
+    font-size: 10px;
+    font-weight: 700;
+    touch-action: none;
+  }
+  .touch-pedals button[data-pedal='gas'] {
+    height: 90px;
+    background: #e3f58cee;
+  }
+  .touch-pedals button.held {
+    background: #9dbb77;
+    border-color: #fff;
+  }
+  .touch-look-hint:not(.hidden) {
+    display: block;
+    position: absolute;
+    right: 20px;
+    bottom: 180px;
+    color: #fff9;
+    font-size: 9px;
+    pointer-events: none;
+    text-shadow: 0 1px 3px #000;
+  }
+  .immersive .minimap {
+    width: 88px;
+    top: 280px;
+    right: 12px;
+    bottom: auto;
+    opacity: 0.8;
+    pointer-events: none;
+  }
+  .immersive .minimap canvas {
+    width: 88px;
+    height: 68px;
+  }
+  .immersive .minimap span {
+    font-size: 6px;
+  }
+  .immersive .controls {
+    display: none;
+  }
+  .immersive .world-bottom {
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+@media (max-height: 500px) and (pointer: coarse) {
+  .immersive .location,
+  .immersive .world-badge,
+  .immersive .minimap,
+  .immersive .view-hint,
+  .touch-look-hint {
+    display: none;
+  }
+  .immersive .touch-controls {
+    bottom: 65px;
+  }
+  .immersive .view-tools {
+    top: 65px;
+    right: 12px;
+  }
+  .immersive .street-actions {
+    top: 108px;
+    right: 12px;
+  }
+  .immersive .play-status {
+    top: 66px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .immersive .day {
+    display: none;
+  }
+  .immersive .touch-pedals {
+    bottom: 65px;
+  }
+}
+@media (pointer: coarse), (max-width: 750px) {
+  .immersive .world-bottom {
+    left: auto;
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .immersive .minimap canvas {
+    width: 100%;
+    height: auto;
+  }
+  .immersive .mobile-actions button {
+    color: #253126;
+  }
+}

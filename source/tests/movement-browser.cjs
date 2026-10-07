@@ -78,8 +78,7 @@ const assert = require('node:assert/strict'),
     await page.setViewportSize({ width: 390, height: 844 });
     await page.click('#touchCar');
     await page.waitForTimeout(200);
-    const button = page.locator('[data-move=ArrowUp]');
-    assert.equal(await button.getAttribute('aria-label'), 'Accelerate');
+    const button = page.locator('[data-pedal=gas]');
     const box = await button.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await page.mouse.down();

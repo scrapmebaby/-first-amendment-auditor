@@ -182,3 +182,12 @@ v0.9 display verification
   ratios and texture-size hardware limits. Existing unit/syntax checks passed.
 - Physical P3 display accuracy, HDR, real iPhone performance and 4K video
   exports are not verified or claimed.
+
+
+v0.9.1 touch verification
+- Chromium mobile emulation with CDP multi-touch events: simultaneous movement
+  and looking, independent finger releases, cancellation, menu reset, combined
+  steering/gas, stopping and landscape control visibility passed.
+- Radial deadzone, analog speed, diagonal normalization and jog threshold unit
+  tests passed. Portrait and landscape screenshots inspected.
+- Physical iPhone/Safari feel and frame rate remain untested.

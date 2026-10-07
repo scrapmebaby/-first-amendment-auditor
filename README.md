@@ -54,3 +54,9 @@ Settings now offers Automatic, Native and 4K resolution, plus automatic
 Display P3 output with an sRGB fallback. For iPhone, try Balanced + Native +
 Automatic color; lower resolution to Automatic for smoother play and less heat.
 4K is optional. Wide-gamut color requires a supported screen and browser.
+
+## Phone controls (v0.9.1)
+
+Use the left thumbstick to walk; push to the edge to jog. Drag the right side
+to look in first-person. While driving, the stick steers and separate pedals
+control gas, brake/reverse and stopping. Portrait and landscape are supported.

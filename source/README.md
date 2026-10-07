@@ -317,3 +317,18 @@ to see the actual render dimensions and output color space. For iPhone, start
 with Balanced graphics, Native resolution and Automatic/P3 color; use Automatic
 resolution for lower heat, battery use or a smoother frame rate. 4K is optional
 and best suited to capable desktop GPUs. Real iPhone frame rates vary by model.
+
+
+## v0.9.1 phone movement
+
+The phone directional buttons are replaced by a 144px analog thumbstick. Push
+slightly to walk slowly; push to the outer edge to jog. In first-person, drag
+the right side to look while moving with the left thumb. Each finger owns its
+control, so releasing one no longer cancels another. Touching the world no
+longer starts an unintended click-to-walk route. Mouse click-to-walk remains.
+
+While driving, the stick steers only. Separate Gas, Brake/Reverse and Stop
+pedals support simultaneous steering and throttle. Lift a pedal to release it.
+Controls reset when menus open, the browser loses focus, a touch is cancelled
+or the viewport changes. Coarse-pointer devices get controls in landscape too,
+with safe-area spacing and a smaller minimap out of the thumb area.

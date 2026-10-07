@@ -1,3 +1,4 @@
+import { TouchInput } from './touch-input.js';
 import { Controller } from './controller.js';
 import { MERCH, mirrorSites, viewMovement } from './appearance.js';
 import { Navigator, drive, slide } from './movement.js';
@@ -63,6 +64,9 @@ for (const element of [
   $('menuContents').append(element);
 const controller = new Controller();
 let padInput = controller.poll([]);
+const touchInput = new TouchInput($('thumbstick'), $('stickKnob'), [
+  ...document.querySelectorAll('[data-pedal]'),
+]);
 const menuOpen = () => $('modal').open || $('gameMenu').open;
 const SAVE = 'first-amendment-auditor-v1';
 let s = fresh(),
@@ -929,6 +933,8 @@ async function showCast(index = 0) {
   }
 }
 function openModal(type, title, body) {
+  touchInput.reset();
+  lookDrag = null;
   $('gameMenu').close();
   studio?.dispose();
   studio = null;
@@ -1444,6 +1450,10 @@ function paperwork() {
 }
 
 function updateUI() {
+  $('touchPedals').classList.toggle('hidden', !s.driving);
+  $('stickLabel').textContent = s.driving ? 'STEER' : 'MOVE · PUSH FARTHER TO JOG';
+  $('touchLookHint').classList.toggle('hidden', s.viewMode !== 'first' || s.driving);
+  $('game').classList.toggle('driving', s.driving);
   $('hudStatus').textContent =
     `${money(s.cash)} · Health ${Math.round(s.health)} · ${s.driving ? 'DRIVING' : 'ON FOOT'}`;
   const first = s.viewMode === 'first' && !!world.camera;
@@ -1514,14 +1524,6 @@ function updateUI() {
   $('engage').disabled = !target || s.driving || engageCooldown > 0;
   $('car').innerHTML = s.driving ? 'Exit car <kbd>E</kbd>' : 'Enter car <kbd>E</kbd>';
   $('mode').textContent = s.driving ? (s.carSpeed < -0.1 ? 'REVERSING' : 'DRIVING') : 'ON FOOT';
-  const touchLabels = s.driving
-    ? ['Accelerate', 'Steer left', 'Brake / reverse', 'Steer right']
-    : ['Walk up', 'Walk left', 'Walk down', 'Walk right'];
-  document.querySelectorAll('[data-move]').forEach((button, i) => {
-    button.setAttribute('aria-label', touchLabels[i]);
-    button.title = touchLabels[i];
-    button.textContent = (s.driving ? ['Gas', '↶', 'Brake', '↷'] : ['↑', '←', '↓', '→'])[i];
-  });
   $('police').textContent =
     policeEvent?.phase === 'paperwork'
       ? 'Write report'
@@ -1614,6 +1616,8 @@ function updateUI() {
   world.minimap($('map'), s, npcs);
 }
 function resetMotion() {
+  touchInput.reset();
+  lookDrag = null;
   keys.clear();
   destination = null;
   s.moving = false;
@@ -1768,7 +1772,20 @@ $('viewToggle').onclick = toggleView;
 $('findMirror').onclick = findMirror;
 let lookDrag = null;
 $('game').addEventListener('pointerdown', (e) => {
-  if (s.viewMode !== 'first' || e.target.closest('button, .minimap') || e.button !== 0) return;
+  if (
+    menuOpen() ||
+    lookDrag ||
+    s.viewMode !== 'first' ||
+    e.target.closest('button, .minimap, [data-touch-control]') ||
+    e.button !== 0
+  )
+    return;
+  if (
+    e.pointerType === 'touch' &&
+    e.clientX < $('game').getBoundingClientRect().left + $('game').clientWidth * 0.45
+  )
+    return;
+  e.preventDefault();
   lookDrag = { id: e.pointerId, x: e.clientX, y: e.clientY };
   $('game').setPointerCapture(e.pointerId);
 });
@@ -1782,7 +1799,9 @@ $('game').addEventListener('pointermove', (e) => {
   lookDrag = { id: e.pointerId, x: e.clientX, y: e.clientY };
 });
 for (const event of ['pointerup', 'pointercancel', 'lostpointercapture'])
-  $('game').addEventListener(event, () => (lookDrag = null));
+  $('game').addEventListener(event, (e) => {
+    if (lookDrag?.id === e.pointerId) lookDrag = null;
+  });
 document.querySelectorAll('[data-look]').forEach((b) => {
   b.onpointerdown = (e) => {
     e.preventDefault();
@@ -1803,11 +1822,13 @@ function move(dt) {
   let dx =
       (keys.has('d') || keys.has('ArrowRight') ? 1 : 0) -
       (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0) +
-      padInput.x,
+      padInput.x +
+      touchInput.x,
     dz =
       (keys.has('s') || keys.has('ArrowDown') ? 1 : 0) -
       (keys.has('w') || keys.has('ArrowUp') ? 1 : 0) +
-      padInput.y;
+      padInput.y +
+      touchInput.y;
   const analogSpeed = Math.min(1, Math.hypot(dx, dz));
   if (dx || dz) {
     destination = null;
@@ -1836,12 +1857,15 @@ function move(dt) {
           (keys.has('s') || keys.has('ArrowDown') ? 1 : 0) +
           padInput.gas -
           padInput.reverse -
-          padInput.y,
+          padInput.y +
+          touchInput.gas -
+          touchInput.reverse,
         steer:
           (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0) -
           (keys.has('d') || keys.has('ArrowRight') ? 1 : 0) -
-          padInput.x,
-        brake: keys.has('Shift') || padInput.brake,
+          padInput.x -
+          touchInput.x,
+        brake: keys.has('Shift') || padInput.brake || touchInput.brake,
       },
       dt,
       collision,
@@ -1849,7 +1873,9 @@ function move(dt) {
     destination = null;
     return;
   }
-  const speed = (keys.has('Shift') || padInput.sprint ? 8 : 5.8) * (destination ? 1 : analogSpeed);
+  const speed =
+    (keys.has('Shift') || padInput.sprint || touchInput.sprint ? 8 : 5.8) *
+    (destination ? 1 : analogSpeed);
   if (destination) {
     if (navigator.walk(s, destination, speed, dt)) {
       destination = null;
@@ -2057,8 +2083,14 @@ $('game').addEventListener(
   { passive: false },
 );
 $('game').addEventListener('click', (e) => {
-  if (s.driving || s.viewMode === 'first') return;
-  if (e.target.closest('button') || e.target.closest('.minimap')) return;
+  if (
+    s.driving ||
+    s.viewMode === 'first' ||
+    e.pointerType === 'touch' ||
+    e.sourceCapabilities?.firesTouchEvents
+  )
+    return;
+  if (e.target.closest('button, .minimap, [data-touch-control]')) return;
   const rect = $('game').getBoundingClientRect(),
     p = world.unproject(e.clientX - rect.left, e.clientY - rect.top);
   if (!collision(p.x, p.z) && Math.abs(p.x) < 87 && Math.abs(p.z) < 87) destination = p;
@@ -2119,10 +2151,14 @@ window.addEventListener('keyup', (e) =>
   keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key),
 );
 window.addEventListener('blur', () => {
+  touchInput.reset();
+  lookDrag = null;
   keys.clear();
   s.carSpeed = 0;
 });
 document.addEventListener('visibilitychange', () => {
+  touchInput.reset();
+  lookDrag = null;
   keys.clear();
   if (document.hidden) {
     save();
@@ -2131,13 +2167,9 @@ document.addEventListener('visibilitychange', () => {
   last = performance.now();
 });
 window.addEventListener('pagehide', save);
-document.querySelectorAll('[data-move]').forEach((b) => {
-  b.onpointerdown = (e) => {
-    e.preventDefault();
-    b.setPointerCapture(e.pointerId);
-    keys.add(b.dataset.move);
-  };
-  b.onpointerup = b.onpointercancel = () => keys.delete(b.dataset.move);
+window.addEventListener('resize', () => {
+  touchInput.reset();
+  lookDrag = null;
 });
 window.addEventListener(
   'pointerdown',
@@ -2186,6 +2218,14 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  touch: () => ({
+    x: touchInput.x,
+    y: touchInput.y,
+    gas: touchInput.gas,
+    reverse: touchInput.reverse,
+    brake: touchInput.brake,
+    looking: lookDrag !== null,
+  }),
   display: () => world.displayInfo?.(),
   controller: () => structuredClone(padInput),
   view: () => ({
