@@ -498,7 +498,27 @@ export class World {
       if (n.mask === 'clown') this.box(x, 2.25, z + 0.52, 0.22, 0.22, 0.22, '#bd5846');
     }
   }
-  car(x, z, driving, t, color = '#a98766', police = false) {
+  car(x, z, driving, t, color = '#a98766', police = false, heading = 0) {
+    const poly = this.poly,
+      cos = Math.cos(heading),
+      sin = Math.sin(heading);
+    this.poly = (points, ...args) =>
+      poly.call(
+        this,
+        points.map(([px, y, pz]) => [
+          x + (px - x) * cos + (pz - z) * sin,
+          y,
+          z - (px - x) * sin + (pz - z) * cos,
+        ]),
+        ...args,
+      );
+    try {
+      this.carBody(x, z, driving, t, color, police);
+    } finally {
+      this.poly = poly;
+    }
+  }
+  carBody(x, z, driving, t, color = '#a98766', police = false) {
     this.flat(x + 0.8, z + 0.8, 3.4, 6, '#88977b', 0.07);
     this.box(x, 0.6, z, 3.1, 1.1, 5.9, color);
     this.box(x, 1.7, z - 0.3, 2.8, 1.2, 3, '#a1a897');
@@ -559,11 +579,11 @@ export class World {
     this.cz += (s.z - 4 - this.cz) * Math.min(1, dt * 2);
     this.polys = [...this.static];
     this.homeDetails(s);
-    this.car(s.carX, s.carZ, s.driving, this.time);
+    this.car(s.carX, s.carZ, s.driving, this.time, '#a98766', false, s.carHeading || 0);
     for (const n of npcs) if (!n.inCustody) this.person(n, this.time);
     if (this.patrol) {
       const p = this.patrol;
-      this.car(p.x, p.z, true, this.time, '#e0e3d4', true);
+      this.car(p.x, p.z, true, this.time, '#e0e3d4', true, Math.PI);
       for (const off of p.officers || [])
         this.person(
           { ...off, color: '#495a65', skin: '#bd9572', hair: '#344654', moving: true },

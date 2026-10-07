@@ -87,6 +87,7 @@ export function fresh() {
     minutes: 540,
     x: 7,
     z: 10,
+    carHeading: 0,
     carX: 4,
     carZ: 16,
     driving: false,
@@ -236,6 +237,11 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (
+    o?.carHeading !== undefined &&
+    (!Number.isFinite(o.carHeading) || Math.abs(o.carHeading) > Math.PI)
+  )
+    return false;
   if (o?.profanity !== undefined && typeof o.profanity !== 'boolean') return false;
   if (!o || o.version !== VERSION || !validCampaign(o.campaign)) return false;
   for (const k of [
@@ -360,6 +366,10 @@ export function migrateSave(o) {
   return {
     ...base,
     ...o,
+    moving: false,
+    carSpeed: 0,
+    route: undefined,
+    routeGoal: null,
     campaign: {
       ...base.campaign,
       ...o.campaign,

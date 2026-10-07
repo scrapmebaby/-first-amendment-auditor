@@ -18,9 +18,9 @@ Three.js selects WebGPU when an adapter is available and WebGL 2 otherwise. Devi
 
 | Input | Action |
 | --- | --- |
-| WASD / arrow keys | Move relative to the screen; steer while driving |
-| Shift | Jog |
-| Click sidewalk | Move toward a destination; building collisions stop movement |
+| WASD / arrow keys | Screen-relative walking; driving: W/↑ gas, S/↓ brake then reverse, A/D or ←/→ steer |
+| Shift | Jog on foot; hard brake while driving |
+| Click sidewalk | Walk a route around buildings (on foot only) |
 | E | Enter nearby car / get out |
 | F | Start or finish a recording |
 | Space | Deliver the next confrontational catchphrase |
@@ -206,7 +206,7 @@ Use an email you control for account verification/recovery, not a fabricated
 unreachable address. The project credit remains the project contributors;
 required third-party author notices remain intact. No personal contact email
 is included. Hosting is subject to GitHub's terms and usage limits.
-This distribution is published through the repository’s root index.html.
+The game is published through GitHub Pages; the repository root index.html is the live entry point.
 
 ## Source formatting and production output
 
@@ -217,3 +217,16 @@ the standalone HTML embeds minified scripts/styles and its fonts. Generated
 output is excluded from formatting. Required third-party notices remain.
 Minification reduces transfer size; it is not access control or proof of authorship.
 No source maps or local workspace paths are included in the public JS bundle.
+
+## v0.6 movement
+
+Cars now accelerate, coast, brake and reverse with speed-dependent steering and
+rotating body geometry. Stop before exiting. The touch arrows use the same
+vehicle-relative controls; their accessible labels change when driving. Menus
+and reloading stop momentum. Saved heading is optional in older saves.
+
+Click-to-walk and civilian movement use a collision-checked navigation grid.
+Locals choose short walks and pause, separate from nearby residents, and route
+escapes around buildings. Animation phase follows distance traveled and facing
+turns smoothly. This is still a compact arcade prototype: no traffic simulation,
+vehicle suspension, pedestrian ragdolls or full rigid-body physics.

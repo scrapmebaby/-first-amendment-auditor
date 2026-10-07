@@ -1180,15 +1180,20 @@ export class Character {
     const d = this.design,
       emotional = gallery || n.emotionUntil > t,
       mood = emotional ? n.emotion : n.flee > 0 ? 'recoil' : null;
-    const moving = !!n.moving,
-      speed = d.shape === 'column' ? 8.1 : 6.4,
-      wave = Math.sin(t * speed + this.phase);
+    const dt = Math.min(0.1, Math.max(0, t - (this.lastUpdate ?? t)));
+    this.lastUpdate = t;
+    const distance =
+      this.lastX === null ? 0 : Math.hypot((n.x || 0) - this.lastX, (n.z || 0) - this.lastZ);
+    const moving = !!n.moving && (gallery || distance > 0.0001);
+    this.walkPhase =
+      (this.walkPhase || 0) + (gallery && moving ? dt * 7 : Math.min(distance, 1) * 3.1);
+    const wave = Math.sin(this.walkPhase + this.phase);
     this.root.position.set(n.x || 0, 0, n.z || 0);
     if (heading !== null) this.angle = heading;
-    else if (this.lastX !== null && moving) {
-      const dx = (n.x || 0) - this.lastX,
-        dz = (n.z || 0) - this.lastZ;
-      if (Math.hypot(dx, dz) > 0.005) this.angle = Math.atan2(dx, dz);
+    else if (this.lastX !== null && moving && distance > 0.0001) {
+      const target = Math.atan2((n.x || 0) - this.lastX, (n.z || 0) - this.lastZ);
+      const delta = Math.atan2(Math.sin(target - this.angle), Math.cos(target - this.angle));
+      this.angle += delta * (1 - Math.exp(-12 * dt));
     }
     this.lastX = n.x || 0;
     this.lastZ = n.z || 0;

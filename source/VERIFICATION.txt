@@ -129,3 +129,14 @@ Formatting/minification update: npm test, npm run check, npm run format:check,
 standalone build, and language-browser.cjs passed. Standalone fonts/styles/script
 embedding and absence of source maps/workspace paths in JS bundle checked.
 Production CSS now uses generated style.min.css. No gameplay changes intended.
+
+v0.6 movement: core/campaign/dialogue/movement unit suites passed. Routing
+around walls, escape routes, collision substeps, acceleration/steering/reverse,
+frame-rate comparison, rotated car geometry and old-save migration verified.
+Browser movement checks passed in Canvas mode: NPC walking, driving, safe exit,
+touch throttle, pause and reload. Full Canvas encounter test passed (arrest
+escort, video playback, crying, thrown cup). WebGL 2 scene rendered with no page
+errors; screenshot inspected. Hardware/mobile frame rate not measured.
+Browser follow-up: corrected asynchronous modal-close input clearing and clamped
+resume delta time to nonnegative. Movement browser test now waits for observed
+speed/heading and passed after the fix, including immediate input after import.

@@ -26,3 +26,10 @@ Third-party dependencies retain their own notices in [licenses/](licenses/).
 
 GitHub Pages serves main / root over HTTPS. No paid backend or custom domain.
 See [HOSTING.txt](HOSTING.txt) for local-first storage and hosting details.
+
+## Movement controls (v0.6)
+
+On foot: WASD/arrows walk relative to the screen; Shift jogs. Clicking a
+destination routes around buildings. In the car: W/↑ gas, S/↓ brake then
+reverse, A/D or ←/→ steer, Shift hard brake. Stop before pressing E to exit.
+Touch controls show Gas and Brake while driving. Old saves remain compatible.

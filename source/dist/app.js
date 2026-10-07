@@ -1,3 +1,4 @@
+import { Navigator, drive, slide } from './movement.js';
 import { Dialogue, language } from './dialogue.js';
 import {
   fresh,
@@ -155,6 +156,10 @@ function resetLocals() {
       cooldown: 0,
       stinkUntil: 0,
       moving: false,
+      walkGoal: null,
+      routeGoal: null,
+      escapeGoal: null,
+      pauseUntil: 0,
       emotion: null,
       emotionUntil: 0,
       inCustody: false,
@@ -204,7 +209,9 @@ function say(n, text) {
 }
 function save() {
   try {
-    const clean = { ...s, moving: false };
+    const clean = { ...s, moving: false, carSpeed: 0 };
+    delete clean.route;
+    delete clean.routeGoal;
     localStorage.setItem(SAVE, JSON.stringify(clean));
     saveFailed = false;
     $('saveStatus').textContent = '● Saved locally';
@@ -462,6 +469,12 @@ function react(n) {
   if (s.health <= 15) hospital();
 }
 function car() {
+  if (s.driving && Math.abs(s.carSpeed || 0) > 1) {
+    notify('Brake before getting out. Hold Down or Shift.');
+    return;
+  }
+  destination = null;
+  s.routeGoal = null;
   if (record) stopRecording();
   if (s.driving) {
     const positions = [
@@ -469,21 +482,29 @@ function car() {
       [-3, 0],
       [0, 4],
       [0, -4],
-    ].map(([x, z]) => ({ x: clamp(s.x + x, -87, 87), z: clamp(s.z + z, -87, 87) }));
+    ].map(([x, z]) => {
+      const a = s.carHeading || 0;
+      return {
+        x: clamp(s.x + x * Math.cos(a) + z * Math.sin(a), -85, 85),
+        z: clamp(s.z - x * Math.sin(a) + z * Math.cos(a), -85, 85),
+      };
+    });
     const p = positions.find((p) => !collision(p.x, p.z));
     if (!p) {
       notify('No room to get out here. Move away from the building.');
       return;
     }
     s.driving = false;
+    s.carSpeed = 0;
     s.x = p.x;
     s.z = p.z;
     notify('Parked. The smoke is a factory feature.');
   } else if (Math.hypot(s.x - s.carX, s.z - s.carZ) < 10) {
     s.driving = true;
+    s.carSpeed = 0;
     s.x = s.carX;
     s.z = s.carZ;
-    notify('Driving. WASD / arrows to steer. Fuel costs $0.08 per in-game minute.');
+    notify('Driving: ↑/W gas, ↓/S brake then reverse, ←/→ steer. Shift: hard brake.');
   } else {
     destination = { x: s.carX + 3, z: s.carZ };
     notify('Your car is marked brown on the minimap. Move closer to enter.');
@@ -895,6 +916,7 @@ function openModal(type, title, body) {
   capture.releaseURLs();
   keys.clear();
   s.moving = false;
+  s.carSpeed = 0;
   destination = null;
   modalType = type;
   $('modalTitle').textContent = title;
@@ -911,6 +933,7 @@ function openModal(type, title, body) {
   if (!$('modal').open) $('modal').showModal();
 }
 function closeModal() {
+  keys.clear();
   studio?.dispose();
   studio = null;
   capture.releaseURLs();
@@ -924,7 +947,6 @@ $('modal').addEventListener('close', () => {
   studio = null;
   if (capture.recorder?.state === 'paused' && !document.hidden) capture.recorder.resume();
   modalType = null;
-  keys.clear();
   last = performance.now();
 });
 function editor() {
@@ -1051,7 +1073,7 @@ function help() {
   openModal(
     'help',
     'Your guide to public disservice.',
-    `<p class="intro">A satirical open world about manufacturing outrage, then discovering the overhead. The only real victory is leaving the outrage career and becoming useful to other people.</p><div class="help-grid"><section><h3>01 / Find the story</h3><p>Use <kbd>WASD</kbd> or arrow keys to walk. Click a nearby patch of sidewalk to move there. Hold Shift to jog. Scroll or use + / − to zoom. Walk close to your smoking brown car and press <kbd>E</kbd> to drive.</p></section><section><h3>02 / Make it about you</h3><p>Near a local, press <kbd>F</kbd> to film and <kbd>Space</kbd> to deliver your rotating legal catchphrases. Locals argue, leave, play music, throw stink bombs, or make contact. Press F to save the clip.</p></section><section><h3>03 / Edit. Upload. Regret.</h3><p>Open Editing desk. Keep the full context or remove your provocation for more clicks. Claimed audio earns nothing. Editing, data, crew and equipment all cost money. The ledger tells the truth.</p></section><section><h3>04 / Live with it</h3><p>After contact, demand charges against the civilian: “This person hit me! I’m the victim!” Officers review the encounter and may arrest the civilian. A later civil claim against the city is a separate choice. Outcomes vary. Once bought, mace fires automatically when a civilian shoves you or your camera. You can also use the Mace button. Each use consumes a charge; the spray, civilian reaction and your self-defense claim are recorded. Low health sends you to hospital for $65. Gear can be bought on credit; daily expenses and interest compound. Open Home, loans & career to manage retaliation, loans and your eventual career change. The report form is the one menu where the town keeps moving.</p></section></div><p class="modal-note">Progress autosaves in this browser. Use Settings to export a gameplay backup; download video takes separately from the editing desk. The game pauses in menus and background tabs, except for police statement forms: the suspect can leave while you write. This is a playable prototype with a compact town, not a finished large-scale game.</p><button class="primary" id="backTown">I have several questionable ideas →</button>`,
+    `<p class="intro">A satirical open world about manufacturing outrage, then discovering the overhead. The only real victory is leaving the outrage career and becoming useful to other people.</p><div class="help-grid"><section><h3>01 / Find the story</h3><p>Use <kbd>WASD</kbd> or arrow keys to walk. Click a nearby patch of sidewalk to move there. Hold Shift to jog. Scroll or use + / − to zoom. Walk close to your smoking brown car and press <kbd>E</kbd> to drive. Driving: W / ↑ accelerates, S / ↓ brakes then reverses, A/D or ←/→ steer, Shift brakes hard. Stop before exiting. Click-to-walk routes around buildings; driving uses the controls.</p></section><section><h3>02 / Make it about you</h3><p>Near a local, press <kbd>F</kbd> to film and <kbd>Space</kbd> to deliver your rotating legal catchphrases. Locals argue, leave, play music, throw stink bombs, or make contact. Press F to save the clip.</p></section><section><h3>03 / Edit. Upload. Regret.</h3><p>Open Editing desk. Keep the full context or remove your provocation for more clicks. Claimed audio earns nothing. Editing, data, crew and equipment all cost money. The ledger tells the truth.</p></section><section><h3>04 / Live with it</h3><p>After contact, demand charges against the civilian: “This person hit me! I’m the victim!” Officers review the encounter and may arrest the civilian. A later civil claim against the city is a separate choice. Outcomes vary. Once bought, mace fires automatically when a civilian shoves you or your camera. You can also use the Mace button. Each use consumes a charge; the spray, civilian reaction and your self-defense claim are recorded. Low health sends you to hospital for $65. Gear can be bought on credit; daily expenses and interest compound. Open Home, loans & career to manage retaliation, loans and your eventual career change. The report form is the one menu where the town keeps moving.</p></section></div><p class="modal-note">Progress autosaves in this browser. Use Settings to export a gameplay backup; download video takes separately from the editing desk. The game pauses in menus and background tabs, except for police statement forms: the suspect can leave while you write. This is a playable prototype with a compact town, not a finished large-scale game.</p><button class="primary" id="backTown">I have several questionable ideas →</button>`,
   );
   $('backTown').onclick = closeModal;
 }
@@ -1116,6 +1138,8 @@ function settings() {
       capture.stop(null);
       resetLocals();
       s = migrateSave(parsed);
+      s.carSpeed = 0;
+      s.routeGoal = null;
       record = null;
       encounter = null;
       policeEvent = null;
@@ -1405,7 +1429,7 @@ function updateUI() {
         ? 'The Rust Bucket, circa 1997.'
         : 'Just another Tuesday.';
   $('targetText').textContent = s.driving
-    ? 'An oil leak with wheels. E to park. Your balance is paying for the fumes.'
+    ? '↑ gas · ↓ brake / reverse · ← → steer. Stop, then E to exit.'
     : target
       ? target.music
         ? 'Playing a royalty-trap playlist. This take cannot earn ad revenue.'
@@ -1424,7 +1448,15 @@ function updateUI() {
   $('engage').textContent = '“' + language(nextPhrase, s.profanity) + '”';
   $('engage').disabled = !target || s.driving || engageCooldown > 0;
   $('car').innerHTML = s.driving ? 'Exit car <kbd>E</kbd>' : 'Enter car <kbd>E</kbd>';
-  $('mode').textContent = s.driving ? 'DRIVING' : 'ON FOOT';
+  $('mode').textContent = s.driving ? (s.carSpeed < -0.1 ? 'REVERSING' : 'DRIVING') : 'ON FOOT';
+  const touchLabels = s.driving
+    ? ['Accelerate', 'Steer left', 'Brake / reverse', 'Steer right']
+    : ['Walk up', 'Walk left', 'Walk down', 'Walk right'];
+  document.querySelectorAll('[data-move]').forEach((button, i) => {
+    button.setAttribute('aria-label', touchLabels[i]);
+    button.title = touchLabels[i];
+    button.textContent = (s.driving ? ['Gas', '↶', 'Brake', '↷'] : ['↑', '←', '↓', '→'])[i];
+  });
   $('police').textContent =
     policeEvent?.phase === 'paperwork'
       ? 'Write report'
@@ -1516,6 +1548,7 @@ function updateUI() {
   }
   world.minimap($('map'), s, npcs);
 }
+const navigator = new Navigator(collision);
 function move(dt) {
   let dx =
       (keys.has('d') || keys.has('ArrowRight') ? 1 : 0) -
@@ -1537,30 +1570,36 @@ function move(dt) {
       dx = dz = 0;
     }
   }
-  const len = Math.hypot(dx, dz);
-  s.moving = !!len;
-  if (!len) return;
-  dx /= len;
-  dz /= len;
-  const speed = (s.driving ? 18 : keys.has('Shift') ? 8 : 5.8) * dt,
-    pad = s.driving ? 1.8 : 0.65;
-  let nx = clamp(s.x + dx * speed, -87, 87),
-    nz = clamp(s.z + dz * speed, -87, 87);
-  let moved = false;
-  if (!collision(nx, s.z, pad)) {
-    s.x = nx;
-    moved = true;
-  }
-  if (!collision(s.x, nz, pad)) {
-    s.z = nz;
-    moved = true;
-  }
-  if (!moved) destination = null;
   if (s.driving) {
-    s.carX = s.x;
-    s.carZ = s.z;
+    // Driving uses vehicle-relative steering; walking remains screen-relative.
+    drive(
+      s,
+      {
+        throttle:
+          (keys.has('w') || keys.has('ArrowUp') ? 1 : 0) -
+          (keys.has('s') || keys.has('ArrowDown') ? 1 : 0),
+        steer:
+          (keys.has('a') || keys.has('ArrowLeft') ? 1 : 0) -
+          (keys.has('d') || keys.has('ArrowRight') ? 1 : 0),
+        brake: keys.has('Shift'),
+      },
+      dt,
+      collision,
+    );
+    destination = null;
+    return;
   }
+  const speed = keys.has('Shift') ? 8 : 5.8;
+  if (destination) {
+    if (navigator.walk(s, destination, speed, dt)) destination = null;
+    return;
+  }
+  s.routeGoal = null;
+  const len = Math.hypot(dx, dz);
+  s.moving =
+    len > 0 && slide(s, (dx / len) * speed * dt, (dz / len) * speed * dt, collision) > 0.001;
 }
+
 function simulate(dt) {
   for (let i = pendingBarks.length - 1; i >= 0; i--) {
     const b = pendingBarks[i];
@@ -1625,35 +1664,45 @@ function simulate(dt) {
         n.patience = 100;
       } else continue;
     }
-    if (policeEvent?.npc === n && policeEvent.phase === 'resolution') continue;
-    if (n.emotion === 'rage' && n.emotionUntil > world.time) {
-      n.moving = true;
-      const nx = n.x + Math.sin(world.time * 5 + n.id) * dt * 0.6;
-      if (!collision(nx, n.z)) n.x = nx;
+    if (policeEvent?.npc === n && policeEvent.phase === 'resolution') {
+      n.moving = !!policeEvent.arrest;
+      continue;
     }
     if (n.flee > 0) {
-      n.flee -= dt;
-      const dx = n.x - s.x,
-        dz = n.z - s.z,
-        len = Math.hypot(dx, dz) || 1;
-      let nx = clamp(n.x + (dx / len) * dt * 4, -85, 85),
-        nz = clamp(n.z + (dz / len) * dt * 4, -85, 85);
-      if (!collision(nx, n.z)) n.x = nx;
-      if (!collision(n.x, nz)) n.z = nz;
-      n.moving = true;
-    } else if (!record || record.npcId !== n.id) {
-      const dx = n.homeX + Math.sin(world.time * 0.09 + n.id) * 3 - n.x,
-        dz = n.homeZ + Math.cos(world.time * 0.1 + n.id) * 2 - n.z,
-        len = Math.hypot(dx, dz) || 1;
-      if (len > 0.5 && n.cooldown <= 0) {
-        const nx = n.x + (dx / len) * dt * 0.7,
-          nz = n.z + (dz / len) * dt * 0.7;
-        if (!collision(nx, nz)) {
-          n.x = nx;
-          n.z = nz;
-          n.moving = true;
+      n.flee = Math.max(0, n.flee - dt);
+      if (
+        !n.escapeGoal ||
+        world.time > (n.repathAt || 0) ||
+        Math.hypot(n.x - n.escapeGoal.x, n.z - n.escapeGoal.z) < 1
+      ) {
+        n.escapeGoal = navigator.escape(n, s);
+        n.repathAt = world.time + 3;
+      }
+      navigator.walk(n, n.escapeGoal, 4, dt, npcs);
+    } else if ((!record || record.npcId !== n.id) && n.cooldown <= 0) {
+      n.escapeGoal = null;
+      if (world.time >= (n.pauseUntil || 0)) {
+        if (!n.walkGoal) {
+          n.walkStep = (n.walkStep || 0) + 1;
+          for (let attempt = 0; attempt < 8; attempt++) {
+            const angle = n.id * 2.4 + n.walkStep * 1.7 + attempt * 0.8;
+            const goal = {
+              x: clamp(n.homeX + Math.sin(angle) * 7, -83, 83),
+              z: clamp(n.homeZ + Math.cos(angle) * 7, -83, 83),
+            };
+            if (navigator.route(n, goal).length) {
+              n.walkGoal = goal;
+              break;
+            }
+          }
+          if (!n.walkGoal) n.pauseUntil = world.time + 3;
+        }
+        if (n.walkGoal && navigator.walk(n, n.walkGoal, 1.1 + (n.id % 4) * 0.15, dt, npcs)) {
+          n.walkGoal = null;
+          n.pauseUntil = world.time + 2 + (n.id % 3);
         }
       }
+
       n.patience = Math.min(100, n.patience + dt * 0.3);
       if (n.patience > 85) n.music = false;
     }
@@ -1726,6 +1775,7 @@ $('game').addEventListener(
   { passive: false },
 );
 $('game').addEventListener('click', (e) => {
+  if (s.driving) return;
   if (e.target.closest('button') || e.target.closest('.minimap')) return;
   const rect = $('game').getBoundingClientRect(),
     p = world.unproject(e.clientX - rect.left, e.clientY - rect.top);
@@ -1765,7 +1815,10 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) =>
   keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key),
 );
-window.addEventListener('blur', () => keys.clear());
+window.addEventListener('blur', () => {
+  keys.clear();
+  s.carSpeed = 0;
+});
 document.addEventListener('visibilitychange', () => {
   keys.clear();
   if (document.hidden) {
@@ -1792,7 +1845,7 @@ window.addEventListener(
 );
 function frame(now) {
   townAudio.update(s, world.atmosphere, !!policeEvent, muted, document.hidden || $('modal').open);
-  const dt = Math.min((now - last) / 1000, 0.15);
+  const dt = Math.max(0, Math.min((now - last) / 1000, 0.15));
   last = now;
   if (!document.hidden && (!$('modal').open || modalType === 'statement')) {
     simulate(dt);
@@ -1822,6 +1875,7 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  locals: () => npcs.map((n) => ({ id: n.id, x: n.x, z: n.z, moving: n.moving, flee: n.flee })),
   setEncounterRoll(value) {
     if (value !== null && (!Number.isFinite(value) || value < 0 || value >= 1))
       throw Error('Roll must be null or in [0,1).');
