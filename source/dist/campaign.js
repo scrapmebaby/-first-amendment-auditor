@@ -101,10 +101,10 @@ export function progressCareer(s) {
     );
   }
   if (
-    (s.published >= 8 ||
-      c.strikes >= 4 ||
-      c.reputation >= 90 ||
-      (c.condition === 0 && s.cash < -350 && c.loansTaken >= 8)) &&
+    (s.published >= 20 ||
+      c.strikes >= 8 ||
+      (c.reputation >= 90 && s.published >= 12) ||
+      (c.condition === 0 && s.cash < 65 && !loanOffer(s).eligible)) &&
     !c.demonetized
   ) {
     c.demonetized = true;
@@ -137,19 +137,27 @@ export function afterUpload(s, clip, cut) {
 }
 export function loanOffer(s) {
   const c = s.campaign;
-  return {
-    principal: 150,
-    rate: Math.min(0.28, 0.05 + c.loansTaken * 0.03),
-    fee: 10 + c.loansTaken * 6,
-  };
+  const likes = s.likes ?? 0;
+  const limit = Math.min(300, Math.floor((s.published * 15 + likes * 0.08) / 10) * 10);
+  const principal = Math.max(0, Math.min(100, Math.floor((limit - c.loanDebt) / 10) * 10));
+  const rate = Math.min(0.28, 0.03 + c.loansTaken * 0.02);
+  const fee = 5 + c.loansTaken * 3;
+  let reason = '';
+  if (c.career !== 'auditor' || c.demonetized)
+    reason = 'Loans require an active monetized channel.';
+  else if (c.loansTaken >= 8) reason = 'Eight loans. This lender is done.';
+  else if (s.published - (c.lastLoanUpload ?? 0) < 3 || likes - (c.lastLoanLikes ?? 0) < 150)
+    reason = 'Each loan requires 3 new uploads and 150 new likes since your last loan.';
+  else if (principal < 30 || principal <= fee)
+    reason = 'Not enough credit available. Grow your channel or repay principal.';
+  return { principal, rate, fee, limit, eligible: !reason, reason };
 }
 export function takeLoan(s) {
   const c = s.campaign;
-  if (c.career !== 'auditor')
-    return { ok: false, text: 'You left the borrowing spiral with the outrage career.' };
-  if (c.loansTaken >= 8)
-    return { ok: false, text: 'Eight loans. Even this lender has run out of optimism.' };
   const o = loanOffer(s);
+  if (!o.eligible) return { ok: false, text: o.reason };
+  c.lastLoanUpload = s.published;
+  c.lastLoanLikes = s.likes ?? 0;
   c.loansTaken++;
   c.loanRate = o.rate;
   c.loanDebt = Math.round((c.loanDebt + o.principal) * 100) / 100;
@@ -230,10 +238,10 @@ export function repairEquipment(s) {
   if (c.condition >= 100)
     return { ok: false, text: 'Your equipment is fine. Your business model is not.' };
   const cost = Math.round((100 - c.condition) * 0.55) + 10;
-  if (s.cash - cost < -350)
+  if (s.cash < cost)
     return {
       ok: false,
-      text: 'Not enough available credit. A loan could fund repairs—and add more interest.',
+      text: 'Not enough cash for repairs. Earn from saved footage or qualify for a channel loan.',
     };
   transaction(s, -cost, 'Repair: camera, mount & bruised ambitions');
   c.condition = 100;

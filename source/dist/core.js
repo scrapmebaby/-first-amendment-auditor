@@ -96,6 +96,7 @@ export function fresh() {
     revenue: 0,
     expenses: 0,
     views: 0,
+    likes: 0,
     society: 0,
     health: 100,
     day: 1,
@@ -138,6 +139,8 @@ export function fresh() {
       demonetized: false,
       strikes: 0,
       loansTaken: 0,
+      lastLoanUpload: 0,
+      lastLoanLikes: 0,
       loanDebt: 0,
       loanRate: 0,
       borrowed: 0,
@@ -165,8 +168,11 @@ export function buy(s, id) {
   if (item.requires && !s.gear.includes(item.requires))
     return { ok: false, text: 'Hire your first crew member first.' };
   if (s.gear.includes(id) && id !== 'spray') return { ok: false, text: 'Already owned.' };
-  if (s.cash - item.price < -350)
-    return { ok: false, text: 'Even the credit card has standards. Credit limit: $350.' };
+  if (s.cash < item.price)
+    return {
+      ok: false,
+      text: `Need ${money(item.price - s.cash)} more cash. Shops do not offer automatic credit.`,
+    };
   transaction(s, -item.price, `Gear: ${item.name}`);
   if (!s.gear.includes(id)) s.gear.push(id);
   if (MERCH[id]) s.merch = id;
@@ -185,8 +191,15 @@ export function estimate(s, c, cut) {
   ])
     if (s.gear.includes(g)) mult += m;
   mult *= 0.35 + (0.65 * (s.campaign?.condition ?? 100)) / 100;
-  const views = Math.round((c.seconds * 22 + c.drama * 95 + 40) * mult * (cut ? 2.1 : 1));
-  const income = c.music || s.campaign?.demonetized ? 0 : Math.round(views * 0.0024 * 100) / 100;
+  // Saved per take: reopening the editor or changing the title never rerolls reach.
+  const audience = c.audience ?? (c.id * 0.61803398875) % 1;
+  const reach = audience < 0.15 ? 0.45 : audience < 0.8 ? 0.9 + audience : 2.5 + audience;
+  const views = Math.round(
+    (Math.min(c.seconds, 90) * 45 + c.drama * 180 + 80) * mult * (cut ? 2.1 : 1) * reach,
+  );
+  const likes = Math.floor(views * (0.012 + audience * 0.028));
+  const rpm = 3 + audience * 4;
+  const income = c.music || s.campaign?.demonetized ? 0 : Math.round((views * rpm) / 10) / 100;
   let cost = 3.5 + (cut ? 4.5 : 1);
   for (const [g, v] of [
     ['camera', 4],
@@ -196,7 +209,7 @@ export function estimate(s, c, cut) {
     ['crew2', 18],
   ])
     if (s.gear.includes(g)) cost += v;
-  return { views, income, cost, net: income - cost };
+  return { views, likes, rpm, income, cost, net: Math.round((income - cost) * 100) / 100 };
 }
 export function publish(s, id, cut, title) {
   const c = s.clips.find((x) => x.id === id);
@@ -205,15 +218,17 @@ export function publish(s, id, cut, title) {
   transaction(s, e.income, `Ad revenue: ${title || 'Local person has a normal response'}`);
   transaction(s, -e.cost, 'Editing, data, equipment & crew');
   s.views += e.views;
+  s.likes = (s.likes ?? 0) + e.likes;
   s.published++;
   s.society = clamp(s.society - (cut ? 3 : 0), -100, 0);
   s.clips = s.clips.filter((x) => x.id !== id);
   return e;
 }
-export function finishClip(s, record) {
+export function finishClip(s, record, audience = Math.random()) {
   if (record.seconds < 3) return null;
   const clip = {
     id: s.nextId++,
+    audience: clamp(audience, 0, 1),
     place: record.place,
     person: record.person,
     seconds: Math.floor(record.seconds),
@@ -259,6 +274,7 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (o?.likes !== undefined && (!Number.isSafeInteger(o.likes) || o.likes < 0)) return false;
   if (o?.viewMode !== undefined && !['overhead', 'first'].includes(o.viewMode)) return false;
   if (o?.lookYaw !== undefined && (!Number.isFinite(o.lookYaw) || Math.abs(o.lookYaw) > Math.PI))
     return false;
@@ -331,6 +347,8 @@ export function validSave(o) {
     !o.clips.every(
       (c) =>
         Number.isInteger(c.id) &&
+        (c.audience === undefined ||
+          (Number.isFinite(c.audience) && c.audience >= 0 && c.audience <= 1)) &&
         typeof c.place === 'string' &&
         typeof c.person === 'string' &&
         Number.isFinite(c.seconds) &&
@@ -412,6 +430,8 @@ export function migrateSave(o) {
     campaign: {
       ...base.campaign,
       ...o.campaign,
+      lastLoanUpload: o.campaign?.lastLoanUpload ?? (o.campaign?.loansTaken ? o.published : 0),
+      lastLoanLikes: o.campaign?.lastLoanLikes ?? (o.campaign?.loansTaken ? (o.likes ?? 0) : 0),
       reputation: o.campaign?.reputation ?? Math.min(89, o.published * 8),
     },
   };
@@ -419,6 +439,8 @@ export function migrateSave(o) {
 export function validCampaign(c) {
   if (c === undefined) return true;
   if (!c || typeof c !== 'object') return false;
+  for (const key of ['lastLoanUpload', 'lastLoanLikes'])
+    if (c[key] !== undefined && (!Number.isSafeInteger(c[key]) || c[key] < 0)) return false;
   const nums = {
     reputation: [0, 100],
     condition: [0, 100],

@@ -39,22 +39,55 @@ test('legacy saves migrate; campaign and statement corruption rejected', () => {
   s.campaign.career = 'won';
   assert.equal(validSave(s), false);
 });
-test('successive loans increase whole-balance interest without counting principal as revenue', () => {
+test('loans require new uploads and likes, cap exposure, and never count as revenue', () => {
   const s = fresh();
-  takeLoan(s);
-  assert.equal(s.cash, 140);
+  assert.equal(takeLoan(s).ok, false);
+  s.published = 3;
+  assert.equal(takeLoan(s).ok, false);
+  s.likes = 150;
+  assert.equal(takeLoan(s).ok, true);
+  assert.equal(s.cash, 45);
   assert.equal(s.revenue, 0);
-  assert.equal(s.campaign.loanDebt, 150);
-  takeLoan(s);
-  assert.equal(s.campaign.loanRate, 0.08);
-  assert.equal(s.campaign.loanDebt, 300);
-  assert.equal(s.cash, 274);
+  assert.equal(s.campaign.loanDebt, 50);
+  const snapshot = JSON.stringify(s);
+  assert.equal(takeLoan(s).ok, false);
+  assert.equal(JSON.stringify(s), snapshot);
+  s.published += 3;
+  assert.equal(takeLoan(s).ok, false);
+  s.likes += 150;
+  assert.equal(takeLoan(s).ok, true);
+  assert.equal(s.campaign.loanRate, 0.05);
+  assert.equal(s.campaign.loanDebt, 110);
   const before = s.expenses;
   chargeDay(s);
-  assert.equal(s.expenses - before, 32);
+  assert.equal(s.expenses - before, 13.5);
   repayLoan(s);
-  assert.equal(s.campaign.loanDebt, 250);
   assert.ok(Math.abs(s.cash - s.campaign.loanDebt - (s.revenue - s.expenses)) < 0.001);
+  for (let i = 0; i < 10; i++) {
+    s.published += 3;
+    s.likes += 1000;
+    takeLoan(s);
+  }
+  assert.ok(s.campaign.loanDebt <= 300);
+  s.campaign.demonetized = true;
+  assert.equal(takeLoan(s).ok, false);
+});
+test('legacy saves retain debt without inventing audience credit', () => {
+  const s = fresh();
+  delete s.likes;
+  delete s.campaign.lastLoanUpload;
+  delete s.campaign.lastLoanLikes;
+  s.published = 5;
+  s.campaign.loansTaken = 1;
+  s.campaign.loanDebt = 150;
+  assert.equal(validSave(s), true);
+  const loaded = migrateSave(s);
+  assert.equal(loaded.likes, 0);
+  assert.equal(loaded.campaign.loanDebt, 150);
+  assert.equal(loaded.campaign.lastLoanUpload, 5);
+  assert.equal(takeLoan(loaded).ok, false);
+  loaded.campaign.lastLoanLikes = -1;
+  assert.equal(validSave(loaded), false);
 });
 test('reputation exposes home, cameras capture identity, later masks defeat identification', () => {
   const s = fresh();
@@ -63,6 +96,7 @@ test('reputation exposes home, cameras capture identity, later masks defeat iden
   assert.equal(s.campaign.homeKnown, true);
   let i = homeIncident(s);
   assert.equal(i.recorded, false);
+  s.cash = 100;
   buy(s, 'security');
   i = homeIncident(s);
   assert.equal(i.recorded, true);
@@ -83,13 +117,15 @@ test('damage lowers reach; repairs restore condition and cost money', () => {
   damageEquipment(s, 100);
   assert.equal(s.campaign.condition, 0);
   assert.ok(estimate(s, c, false).views < good);
+  assert.equal(repairEquipment(s).ok, false);
+  s.cash = 65;
   assert.equal(repairEquipment(s).ok, true);
   assert.equal(s.campaign.condition, 100);
-  assert.equal(s.cash, -65);
+  assert.equal(s.cash, 0);
 });
 test('uploads progress to demonetization; service work and deliberate surrender achieve victory', () => {
   const s = fresh();
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 20; i++) {
     const c = finishClip(s, take);
     publish(s, c.id, false, 'Ordinary person exposed');
     afterUpload(s, c, false);

@@ -18,9 +18,10 @@ for (const seed of [0, 71, 1977, 999999999]) {
 }
 assert.ok(collision(7, 4, 0.65), 'starter mirror has a physical footprint');
 const state = fresh();
+state.cash = 18;
 assert.ok(buy(state, 'merchPress').ok);
 assert.equal(state.merch, 'merchPress');
-assert.equal(state.cash, -18);
+assert.equal(state.cash, 0);
 assert.ok(validSave(state));
 assert.equal(buy(state, 'merchPress').ok, false);
 assert.equal(validSave({ ...fresh(), merch: 'merchPress' }), false);

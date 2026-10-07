@@ -26,18 +26,19 @@ test('new career starts broke and valid; corrupted imports rejected', () => {
   assert.equal(validSave({ ...s, clips: [{}] }), false);
   assert.equal(validSave({ ...s, carX: 900 }), false);
 });
-test('purchases enforce credit limit, prerequisites and ownership', () => {
+test('purchases require actual cash and enforce prerequisites and ownership', () => {
   const s = fresh();
+  assert.equal(buy(s, 'camera').ok, false);
+  assert.equal(s.cash, 0);
+  s.cash = 85;
   assert.equal(buy(s, 'crew2').ok, false);
   assert.equal(buy(s, 'camera').ok, true);
-  assert.equal(s.cash, -85);
+  assert.equal(s.cash, 0);
   assert.equal(buy(s, 'camera').ok, false);
-  buy(s, 'crew');
-  buy(s, 'crew2');
-  buy(s, 'gimbal');
-  assert.equal(buy(s, 'mic').ok, true);
-  assert.equal(buy(s, 'poop').ok, false);
-  assert.ok(s.cash >= -350);
+  assert.equal(buy(s, 'spray').ok, false);
+  s.cash = -10;
+  assert.equal(buy(s, 'clown').ok, false);
+  assert.equal(s.cash, -10);
 });
 test('short takes rejected; music kills revenue; context cutting boosts clicks', () => {
   const s = fresh();
@@ -61,8 +62,9 @@ test('publishing accounts for revenue/expenses and cannot duplicate income', () 
 });
 test('crew adds more overhead than a short clip earns', () => {
   const s = fresh();
-  const c = finishClip(s, take),
+  const c = finishClip(s, take, 0.4),
     before = estimate(s, c, true);
+  s.cash = 65;
   buy(s, 'crew');
   const after = estimate(s, c, true);
   assert.ok(after.views > before.views);
@@ -77,4 +79,31 @@ test('claims require evidence and spraying defeats a payout', () => {
   s = fresh();
   assert.ok(resolveClaim(s, { touched: true }, 0.1).payout > 0);
   assert.ok(Math.abs(s.cash - (s.revenue - s.expenses)) < 0.001);
+});
+
+test('video outcomes vary, persist through saves, and cap idle duration', () => {
+  const s = fresh();
+  const low = finishClip(s, { ...take, seconds: 40, drama: 6 }, 0.1);
+  const hit = finishClip(s, { ...take, seconds: 40, drama: 6 }, 0.9);
+  const a = estimate(s, low, false),
+    b = estimate(s, hit, false);
+  assert.ok(b.income > a.income * 3);
+  assert.ok(b.likes > a.likes);
+  assert.deepEqual(estimate(s, JSON.parse(JSON.stringify(hit)), false), b);
+  assert.deepEqual(
+    estimate(s, { ...hit, seconds: 9000 }, false),
+    estimate(s, { ...hit, seconds: 90 }, false),
+  );
+  assert.equal(validSave({ ...s, likes: -1 }), false);
+  assert.equal(validSave({ ...s, clips: [{ ...hit, audience: NaN }] }), false);
+});
+test('a modest channel can save for gear without borrowing', () => {
+  const s = fresh();
+  for (let i = 0; i < 3; i++) {
+    const c = finishClip(s, { ...take, seconds: 45, drama: 6 }, 0.5);
+    publish(s, c.id, false, 'Test');
+  }
+  assert.ok(s.likes >= 150);
+  assert.ok(buy(s, 'mic').ok);
+  assert.ok(s.cash >= 0);
 });

@@ -389,3 +389,13 @@ in first-person. Desktop retains the persistent minimap.
 A new furious dialogue pool adds 16 lines, bringing paired exchanges to 164.
 Low patience now overrides recognition, with stronger profanity at escalation;
 the existing clean-language setting still filters every line.
+
+## v0.11.0 cash, channel credit and variable earnings
+
+Shops and equipment repairs require cash; unavoidable bills can still overdraw an account. Uploads now generate saved, per-take audience variation, likes and variable ad rates. Reach caps at 90 seconds. The editor shows the simulated forecast, including likes and net income, before uploading. Ordinary footage can fund equipment; crew wages, repairs, retaliation and interest still threaten margins.
+
+Each loan requires three new uploads and 150 new likes since the previous loan. The outstanding principal limit grows with uploads and likes, up to $300; each advance is at most $100. Fees and daily interest rise with repeat borrowing. Demonetized channels cannot borrow. Principal never counts as earnings. Existing saves retain balances, gear and debt; historical likes are not fabricated.
+
+Platform review now allows a longer earning runway: 20 uploads, eight serious edited-content strikes, or reputation 90 after at least 12 uploads. A destroyed camera with no repair funds or eligible loan still unlocks the recovery career.
+
+Validation: unit suite, syntax checks, standalone build and `node tests/economy-browser.cjs` (mobile Chromium Canvas compatibility mode). The browser check exercises blocked purchases/loans, publishing, likes, an affordable upgrade and the repeat-loan lock. No physical iPhone testing was performed.
