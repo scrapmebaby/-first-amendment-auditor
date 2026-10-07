@@ -140,3 +140,8 @@ errors; screenshot inspected. Hardware/mobile frame rate not measured.
 Browser follow-up: corrected asynchronous modal-close input clearing and clamped
 resume delta time to nonnegative. Movement browser test now waits for observed
 speed/heading and passed after the fix, including immediate input after import.
+
+v0.6.1 audio: OfflineAudioContext renders the exhaust graph. Idle and rev
+output are nonzero, acceleration is louder, parked/exit output is silent,
+and the measured render stays below clipping. Original master mute/pause
+routing retained. No sound files, network service or permissions added.

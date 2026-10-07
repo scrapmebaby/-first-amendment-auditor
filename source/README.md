@@ -230,3 +230,11 @@ Locals choose short walks and pause, separate from nearby residents, and route
 escapes around buildings. Animation phase follows distance traveled and facing
 turns smoothly. This is still a compact arcade prototype: no traffic simulation,
 vehicle suspension, pedestrian ragdolls or full rigid-body physics.
+
+## v0.6.1 exhaust audio
+
+Settings → Sound enables the car’s synthesized burbling, fart-like exhaust.
+Its voiced buzz, uneven flutter and falling rasp bursts follow speed and
+acceleration, including reverse. The effect uses reusable Web Audio nodes;
+no sound downloads, recordings, paid service or microphone access. Existing
+mute and menu/background pause settings apply. Local video takes remain silent.
