@@ -1090,7 +1090,7 @@ function settings() {
       )
       .join(
         '',
-      )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button></div><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes a synthesized sputtering exhaust that revs with the car. No accounts, trackers, real uploads, or purchases.</p>`,
+      )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button><button id="ambientMusic">Background music: ${s.music === false ? 'off' : 'on'}</button></div><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes birds, gusting wind, rain and occasional quiet music. Driving fades the outdoor mix down for the sputtering exhaust. Background music can be switched off separately. No accounts, trackers, real uploads, or purchases.</p>`,
   );
   $('languageChoice').value = s.profanity ? 'explicit' : 'clean';
   $('languageChoice').onchange = (e) => {
@@ -1156,6 +1156,11 @@ function settings() {
     } catch {
       notify('That file is not a valid game save. Your current progress is unchanged.');
     }
+  };
+  $('ambientMusic').onclick = () => {
+    s.music = s.music === false;
+    save();
+    settings();
   };
   $('sound').onclick = () => {
     muted = !muted;
@@ -1844,7 +1849,14 @@ window.addEventListener(
   { once: true },
 );
 function frame(now) {
-  townAudio.update(s, world.atmosphere, !!policeEvent, muted, document.hidden || $('modal').open);
+  townAudio.update(
+    s,
+    world.atmosphere,
+    !!policeEvent,
+    muted,
+    document.hidden || $('modal').open,
+    !!record || speechTimer > 0,
+  );
   const dt = Math.max(0, Math.min((now - last) / 1000, 0.15));
   last = now;
   if (!document.hidden && (!$('modal').open || modalType === 'statement')) {

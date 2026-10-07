@@ -27,12 +27,15 @@ const assert = require('node:assert/strict'),
     await page.click('#closeModal');
     await page.click('#settings');
     await page.selectOption('#languageChoice', 'explicit');
+    await page.click('#ambientMusic');
+    assert.equal(await page.evaluate(() => auditorDebug.snapshot().music), false);
     await page.click('#terms');
     assert.match(await page.locator('#modalBody').innerText(), /paid access/);
     await page.click('#closeModal');
     await page.reload();
     await page.waitForFunction(() => window.auditorDebug);
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().profanity), true);
+    assert.equal(await page.evaluate(() => auditorDebug.snapshot().music), false);
     await page.click('[data-panel=shop]');
     assert.match(await page.locator('#modalBody').innerText(), /Piece of shit mask/);
     await page.click('#closeModal');

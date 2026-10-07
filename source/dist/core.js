@@ -102,6 +102,7 @@ export function fresh() {
     tutorial: true,
     profanity: false,
     sound: false,
+    music: true,
     weather: 'living',
     campaign: {
       reputation: 0,
@@ -237,6 +238,7 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (o?.music !== undefined && typeof o.music !== 'boolean') return false;
   if (
     o?.carHeading !== undefined &&
     (!Number.isFinite(o.carHeading) || Math.abs(o.carHeading) > Math.PI)

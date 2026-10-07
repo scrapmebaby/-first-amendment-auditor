@@ -79,6 +79,114 @@ export class RustEngine {
   }
 }
 
+// Sparse bird calls and short, original chord phrases; silence is part of the score.
+export class OutdoorAmbience {
+  constructor(ctx, output, random = Math.random) {
+    this.ctx = ctx;
+    this.random = random;
+    this.birds = ctx.createGain();
+    this.birds.gain.value = 0;
+    this.birds.connect(output);
+    this.music = ctx.createGain();
+    this.music.gain.value = 0;
+    this.music.connect(output);
+    this.calls = Array.from({ length: 3 }, (_, i) => {
+      const voice = ctx.createOscillator(),
+        gain = ctx.createGain(),
+        pan = ctx.createStereoPanner();
+      voice.type = 'sine';
+      voice.frequency.value = 2100;
+      gain.gain.value = 0;
+      pan.pan.value = (i - 1) * 0.65;
+      voice.connect(gain);
+      gain.connect(pan);
+      pan.connect(this.birds);
+      voice.start();
+      return { voice, gain, pan };
+    });
+    this.notes = Array.from({ length: 3 }, (_, i) => {
+      const voice = ctx.createOscillator(),
+        gain = ctx.createGain(),
+        pan = ctx.createStereoPanner();
+      voice.type = 'sine';
+      voice.frequency.value = 220;
+      gain.gain.value = 0;
+      pan.pan.value = (i - 1) * 0.35;
+      voice.connect(gain);
+      gain.connect(pan);
+      pan.connect(this.music);
+      voice.start();
+      return { voice, gain };
+    });
+    this.nextBird = ctx.currentTime + 1.2;
+    this.nextMusic = ctx.currentTime + 8;
+    this.phrase = 0;
+    this.birdIndex = 0;
+  }
+  call(t) {
+    const { voice, gain, pan } = this.calls[this.birdIndex++ % this.calls.length];
+    const pitch = 1700 + this.random() * 1300,
+      count = 2 + Math.floor(this.random() * 3);
+    pan.pan.setValueAtTime(this.random() * 1.5 - 0.75, t);
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(0, t);
+    voice.frequency.cancelScheduledValues(t);
+    for (let i = 0; i < count; i++) {
+      const start = t + i * 0.19,
+        duration = 0.075 + this.random() * 0.06;
+      voice.frequency.setValueAtTime(pitch * (1 + i * 0.035), start);
+      voice.frequency.exponentialRampToValueAtTime(pitch * 1.32, start + duration * 0.35);
+      voice.frequency.exponentialRampToValueAtTime(pitch * 0.83, start + duration);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.45, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      gain.gain.setValueAtTime(0, start + duration + 0.01);
+    }
+  }
+  phraseAt(t) {
+    // Open voicings with slow entrances, rather than a constant repeating melody.
+    const chords = [
+      [48, 55, 64],
+      [45, 52, 60],
+      [41, 48, 57],
+      [43, 50, 59],
+    ];
+    for (let bar = 0; bar < 3; bar++) {
+      const chord = chords[(this.phrase + bar) % chords.length];
+      this.notes.forEach(({ voice, gain }, i) => {
+        const start = t + bar * 4.8 + i * 0.24;
+        voice.frequency.setValueAtTime(440 * 2 ** ((chord[i] - 69) / 12), start);
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.3, start + 1.3);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 4.3);
+        gain.gain.setValueAtTime(0, start + 4.5);
+      });
+    }
+    this.phrase = (this.phrase + 1) % chords.length;
+  }
+  update(s, weather, quiet, t = this.ctx.currentTime) {
+    const day = s.minutes >= 360 && s.minutes < 1200;
+    const outside = !s.driving;
+    const birdsAllowed = day && weather.rain < 0.65 && outside && !quiet;
+    this.birds.gain.setTargetAtTime(birdsAllowed ? 0.028 * (1 - weather.rain) : 0, t, 0.65);
+    const musicAllowed = s.music !== false && outside && !quiet;
+    this.music.gain.setTargetAtTime(musicAllowed ? 0.024 : 0, t, 0.9);
+    if (birdsAllowed && t >= this.nextBird) {
+      this.call(t + 0.025);
+      this.nextBird = t + 3 + this.random() * 7;
+    }
+    if (musicAllowed && t >= this.nextMusic) {
+      this.phraseAt(t + 0.03);
+      this.nextMusic = t + 55 + this.random() * 35;
+    }
+    // A pause never creates a backlog of calls or queued phrases on resume.
+    if (quiet || !outside) {
+      this.nextBird = Math.max(this.nextBird, t + 1.2);
+      this.nextMusic = Math.max(this.nextMusic, t + 12);
+    }
+  }
+}
+
 export class TownAudio {
   constructor() {
     this.ctx = null;
@@ -101,7 +209,8 @@ export class TownAudio {
       source.loop = true;
       const filter = a.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 1600;
+      filter.frequency.value = 800;
+      this.windFilter = filter;
       this.weather = a.createGain();
       this.weather.gain.value = 0;
       source.connect(filter);
@@ -109,6 +218,7 @@ export class TownAudio {
       this.weather.connect(this.master);
       source.start();
       this.engine = new RustEngine(a, this.master, buffer);
+      this.outdoors = new OutdoorAmbience(a, this.master);
       this.siren = a.createOscillator();
       this.siren.type = 'sine';
       this.sirenGain = a.createGain();
@@ -118,12 +228,19 @@ export class TownAudio {
       this.siren.start();
     } catch {}
   }
-  update(s, w, patrol, muted, paused) {
+  update(s, w, patrol, muted, paused, conversation = false) {
     if (!this.ctx) return;
     const a = this.ctx,
       t = a.currentTime;
     this.master.gain.setTargetAtTime(muted || paused ? 0 : 0.5, t, 0.15);
-    this.weather.gain.setTargetAtTime(0.012 + w.rain * 0.085 + w.cloud * 0.015, t, 0.4);
+    const gust = 0.72 + 0.2 * Math.sin(t * 0.23) + 0.08 * Math.sin(t * 0.71);
+    this.windFilter.frequency.setTargetAtTime(450 + gust * 400 + w.rain * 1400, t, 1.2);
+    this.weather.gain.setTargetAtTime(
+      (0.02 * gust + w.rain * 0.085 + w.cloud * 0.012) * (s.driving ? 0.22 : 1),
+      t,
+      0.8,
+    );
+    this.outdoors.update(s, w, muted || paused || patrol || conversation, t);
     this.engine.update(s, t);
     this.sirenGain.gain.setTargetAtTime(patrol ? 0.018 : 0, t, 0.1);
     this.siren.frequency.setTargetAtTime(530 + (Math.sin(t * 6) + 1) * 170, t, 0.03);

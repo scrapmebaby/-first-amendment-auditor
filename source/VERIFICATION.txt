@@ -145,3 +145,8 @@ v0.6.1 audio: OfflineAudioContext renders the exhaust graph. Idle and rev
 output are nonzero, acceleration is louder, parked/exit output is silent,
 and the measured render stays below clipping. Original master mute/pause
 routing retained. No sound files, network service or permissions added.
+
+v0.6.2: OfflineAudioContext renders verify daylight bird output, quiet driving,
+initial music silence, audible musical passages, long silent gaps, and music
+disabled. Engine audio regression and preference migration checks passed.
+Core/campaign/dialogue/movement tests and syntax/build checks passed.

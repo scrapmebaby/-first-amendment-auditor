@@ -238,3 +238,14 @@ Its voiced buzz, uneven flutter and falling rasp bursts follow speed and
 acceleration, including reverse. The effect uses reusable Web Audio nodes;
 no sound downloads, recordings, paid service or microphone access. Existing
 mute and menu/background pause settings apply. Local video takes remain silent.
+
+## v0.6.2 outdoor soundscape
+
+Sound now includes gently gusting wind, weather-following rain and spatially
+varied daytime bird calls. Birds quieten in heavy rain and at night. Short
+original chord passages last about 15 seconds, with roughly 40–75 seconds
+of silence between passages. Settings offers a separate Background music
+switch. Conversations, recording and police scenes fade decorative audio
+down. Driving suppresses birds/music and lowers wind so the sputtering car
+remains prominent. Master Sound/mute and background/menu pause still apply.
+No external audio assets or music service. Gameplay video exports stay silent.
