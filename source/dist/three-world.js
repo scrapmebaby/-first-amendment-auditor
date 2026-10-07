@@ -1,3 +1,5 @@
+import { renderScale } from './display.js';
+import { DisplayP3ColorSpace, DisplayP3ColorSpaceImpl } from 'three/addons/math/ColorSpaces.js';
 import { MERCH, mirrorSites } from './appearance.js';
 import * as THREE from 'three/webgpu';
 import {
@@ -26,6 +28,8 @@ import { World } from './world.js';
 import { WEATHER } from './atmosphere.js';
 import { Character, CAST, AUDITOR, SUPPORT } from './characters.js';
 
+THREE.ColorManagement.define({ [DisplayP3ColorSpace]: DisplayP3ColorSpaceImpl });
+
 // Geometry and gameplay remain independent. The legacy painter also remains available
 // on devices without either GPU backend; no external assets or runtime requests.
 export class ThreeWorld extends World {
@@ -36,10 +40,14 @@ export class ThreeWorld extends World {
     this.ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     try {
       this.quality = localStorage.getItem('auditor-graphics');
+      this.resolution = localStorage.getItem('auditor-resolution');
+      this.gamut = localStorage.getItem('auditor-gamut');
     } catch {}
     this.autoQuality = !this.quality;
     this.quality ||= innerWidth < 700 ? 'balanced' : 'cinematic';
     this.quality = ['cinematic', 'balanced'].includes(this.quality) ? this.quality : 'balanced';
+    this.resolution = ['auto', 'native', '4k'].includes(this.resolution) ? this.resolution : 'auto';
+    this.gamut = ['auto', 'srgb', 'p3'].includes(this.gamut) ? this.gamut : 'auto';
     this.lastSize = '';
   }
 
@@ -161,6 +169,7 @@ export class ThreeWorld extends World {
         forceWebGL: !adapter,
       });
       await this.renderer.init();
+      this.applyDisplayColor();
       if (this.autoQuality && !this.renderer.backend.isWebGPUBackend) this.quality = 'balanced';
       this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
       this.renderer.toneMappingExposure = 1.05;
@@ -308,6 +317,64 @@ export class ThreeWorld extends World {
       this.setupPipeline();
       this.lastSize = '';
     }
+  }
+
+  setDisplay(resolution, gamut) {
+    if (!['auto', 'native', '4k'].includes(resolution) || !['auto', 'srgb', 'p3'].includes(gamut))
+      return;
+    this.resolution = resolution;
+    this.gamut = gamut;
+    try {
+      localStorage.setItem('auditor-resolution', resolution);
+      localStorage.setItem('auditor-gamut', gamut);
+    } catch {}
+    // Apply at the next frame, after previous GPU work completes.
+    this.displayDirty = true;
+    this.lastSize = '';
+  }
+
+  applyDisplayColor() {
+    const backend = this.renderer.backend;
+    const wideScreen = matchMedia('(color-gamut: p3)').matches;
+    const desired = this.gamut !== 'srgb' && wideScreen ? 'display-p3' : 'srgb';
+    let actual = 'srgb';
+    try {
+      if (backend.isWebGPUBackend) {
+        const context = backend.context;
+        if (context.getConfiguration) {
+          const configuration = context.getConfiguration();
+          context.configure({ ...configuration, colorSpace: desired });
+          actual = context.getConfiguration().colorSpace || 'srgb';
+        }
+      } else if ('drawingBufferColorSpace' in backend.gl) {
+        backend.gl.drawingBufferColorSpace = desired;
+        actual = backend.gl.drawingBufferColorSpace;
+      }
+    } catch {
+      // A rejected P3 configuration must also reset the canvas and shader output.
+      if (backend.isWebGPUBackend) {
+        const context = backend.context;
+        const configuration = context.getConfiguration?.();
+        if (configuration) context.configure({ ...configuration, colorSpace: 'srgb' });
+      } else if ('drawingBufferColorSpace' in backend.gl)
+        backend.gl.drawingBufferColorSpace = 'srgb';
+    }
+    this.renderer.outputColorSpace =
+      actual === 'display-p3' ? DisplayP3ColorSpace : THREE.SRGBColorSpace;
+    this.displayColor = actual;
+    this.displayDirty = false;
+  }
+
+  displayInfo() {
+    return {
+      resolution: this.resolution,
+      gamut: this.gamut,
+      colorSpace: this.displayColor || 'srgb',
+      width: this.canvas.width,
+      height: this.canvas.height,
+      wideScreen: matchMedia('(color-gamut: p3)').matches,
+      gpu: !!this.renderer,
+    };
   }
 
   geometry(polygons) {
@@ -523,9 +590,15 @@ export class ThreeWorld extends World {
       gl.deleteSync(this.glFence);
       this.glFence = null;
     }
-    const size = `${this.w}:${this.h}:${dpr}:${this.quality}`;
+    if (this.displayDirty) this.applyDisplayColor();
+    const size = `${this.w}:${this.h}:${devicePixelRatio}:${this.quality}:${this.resolution}`;
     if (size !== this.lastSize) {
-      this.renderer.setPixelRatio(Math.min(dpr, this.quality === 'cinematic' ? 1.5 : 1));
+      const limit =
+        this.renderer.backend.device?.limits.maxTextureDimension2D ||
+        (gl ? gl.getParameter(gl.MAX_TEXTURE_SIZE) : 8192);
+      this.renderer.setPixelRatio(
+        renderScale(this.w, this.h, devicePixelRatio || 1, this.quality, this.resolution, limit),
+      );
       this.renderer.setSize(this.w, this.h, false);
       this.lastSize = size;
     }

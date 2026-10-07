@@ -171,3 +171,14 @@ v0.8 fullscreen / controller verification
   initial connection and rejection of unknown mappings.
 - Desktop menu and mobile gameplay screenshots inspected.
 - Physical controller and real iOS hardware have not been tested.
+
+
+v0.9 display verification
+- Chromium WebGL2 and native WebGPU each rendered a 3840×2160 buffer.
+- Both backends accepted Display P3 canvas output and matching Three.js output,
+  switched back to sRGB, persisted resolution/color settings and fell back to
+  sRGB when the browser reported no P3 screen. Display gamut was emulated.
+- Unit tests: native phone density, UHD dimensions, portrait/ultrawide aspect
+  ratios and texture-size hardware limits. Existing unit/syntax checks passed.
+- Physical P3 display accuracy, HDR, real iPhone performance and 4K video
+  exports are not verified or claimed.

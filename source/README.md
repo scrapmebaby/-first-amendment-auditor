@@ -293,3 +293,27 @@ Stick deadzones prevent small drift. Button actions trigger once per press;
 disconnected/background controllers provide no gameplay input. Only browser
 standard mappings are supported; uncommon controllers may require OS mapping.
 There are no additional services, dependencies, accounts or permissions.
+
+
+## v0.9 resolution and Display P3
+
+Menu → Settings separates lighting quality, resolution and output color.
+Automatic resolution retains the existing performance budget. Native renders
+at device pixel density, capped at the UHD budget. 4K renders 3840×2160 at 16:9,
+preserving other aspect ratios within the same long/short-edge limits and GPU
+texture limit. On smaller screens this is supersampling, not extra physical
+screen pixels. UI text remains browser-rendered at native density.
+
+Automatic color uses Display P3 when both the screen and canvas support it;
+sRGB remains the fallback and can be selected explicitly. Three.js performs
+linear-light color management and output conversion; the canvas is configured
+to the matching color space. This is wide-gamut SDR, not HDR. Source textures
+keep their existing sRGB interpretation. Changing output gamut does not invent
+additional detail or saturate the artwork. Video capture remains separate from
+the display resolution and does not promise 4K or P3 exports.
+
+Options save locally on this device and apply after resuming. Reopen Settings
+to see the actual render dimensions and output color space. For iPhone, start
+with Balanced graphics, Native resolution and Automatic/P3 color; use Automatic
+resolution for lower heat, battery use or a smoother frame rate. 4K is optional
+and best suited to capable desktop GPUs. Real iPhone frame rates vary by model.

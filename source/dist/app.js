@@ -1120,7 +1120,7 @@ function settings() {
       )
       .join(
         '',
-      )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button><button id="ambientMusic">Background music: ${s.music === false ? 'off' : 'on'}</button></div><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes birds, gusting wind, rain and occasional quiet music. Driving fades the outdoor mix down for the sputtering exhaust. Background music can be switched off separately. No accounts, trackers, real uploads, or purchases.</p>`,
+      )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><label class="weather-select">RESOLUTION <select id="resolutionChoice"><option value="auto">Automatic · performance friendly</option><option value="native">Native display · up to 4K</option><option value="4k">4K UHD · 3840 × 2160 at 16:9</option></select></label><label class="weather-select">COLOR <select id="gamutChoice"><option value="auto">Automatic · Display P3 when supported</option><option value="srgb">sRGB · standard color</option><option value="p3">Display P3 · wide gamut</option></select></label><p class="modal-note" id="displayStatus"></p><p class="modal-note">4K costs more GPU power and preserves your screen’s shape. On smaller screens it supersamples; it does not add physical pixels. Display P3 requires a compatible screen and browser; otherwise sRGB is used. This is wide-gamut SDR, not HDR. Display changes apply when you resume.</p><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button><button id="ambientMusic">Background music: ${s.music === false ? 'off' : 'on'}</button></div><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes birds, gusting wind, rain and occasional quiet music. Driving fades the outdoor mix down for the sputtering exhaust. Background music can be switched off separately. No accounts, trackers, real uploads, or purchases.</p>`,
   );
   $('languageChoice').value = s.profanity ? 'explicit' : 'clean';
   $('languageChoice').onchange = (e) => {
@@ -1131,6 +1131,18 @@ function settings() {
     updateUI();
   };
   $('terms').onclick = terms;
+  $('resolutionChoice').value = world.resolution || 'auto';
+  $('gamutChoice').value = world.gamut || 'auto';
+  $('resolutionChoice').disabled = $('gamutChoice').disabled = !world.renderer;
+  const info = world.displayInfo?.();
+  $('displayStatus').textContent = info?.gpu
+    ? `Current output: ${info.width} × ${info.height} · ${info.colorSpace === 'display-p3' ? 'Display P3' : 'sRGB'}${info.wideScreen ? '' : ' · P3 display not detected'}`
+    : 'Canvas compatibility mode · display options unavailable';
+  $('resolutionChoice').onchange = $('gamutChoice').onchange = () => {
+    world.setDisplay?.($('resolutionChoice').value, $('gamutChoice').value);
+    $('displayStatus').textContent =
+      'Saved. Resume to apply; reopen Settings to check the actual output.';
+  };
   $('graphicsChoice').value = world.quality || 'balanced';
   $('graphicsChoice').onchange = (e) => world.setQuality?.(e.target.value);
   $('weatherChoice').value = world.atmosphere.choice;
@@ -2174,6 +2186,7 @@ else if (!s.published && !s.clips.length)
   );
 // Read-only diagnostics for reproducible browser smoke testing.
 window.auditorDebug = {
+  display: () => world.displayInfo?.(),
   controller: () => structuredClone(padInput),
   view: () => ({
     mode: s.viewMode,

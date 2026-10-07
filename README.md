@@ -47,3 +47,10 @@ The town fills your screen. Tab or Menu & objectives opens the pause menu.
 Use ⛶ for browser fullscreen where supported. Standard Xbox/PlayStation-style
 controllers use left stick to move, right stick to look in first-person, triggers
 to drive and Start/Options for menus. Full bindings appear in the menu.
+
+## Resolution and color (v0.9)
+
+Settings now offers Automatic, Native and 4K resolution, plus automatic
+Display P3 output with an sRGB fallback. For iPhone, try Balanced + Native +
+Automatic color; lower resolution to Automatic for smoother play and less heat.
+4K is optional. Wide-gamut color requires a supported screen and browser.
