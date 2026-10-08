@@ -275,9 +275,11 @@ function tickBanter() {
     return;
   }
   if (b.turn >= 4) {
-    activeBanter = null;
+    if (characterSpeech.busy) b.n.pauseUntil = Math.max(b.n.pauseUntil || 0, world.time + 2);
+    else activeBanter = null;
     return;
   }
+  b.n.pauseUntil = Math.max(b.n.pauseUntil || 0, world.time + 2);
   if (characterSpeech.busy || world.time < b.at || (b.recorded && b.turn === 1)) return;
   const actor = b.turn % 2 === 0 ? s : b.n;
   const text = b.lines[b.turn++];
@@ -290,13 +292,17 @@ function startBanter(n) {
     conversationLines.length = 0;
     $('conversationLines').replaceChildren();
   }
+  const visits = s.conversationMemory[n.id] ?? 0;
   const lines = banter.pick({
     place: locationAt(n.x, n.z).name,
     weather: world.atmosphere.current,
     reputation: s.campaign.reputation,
     patience: n.patience,
+    temperament: n.temperament,
+    visits,
     explicit: s.profanity,
   });
+  s.conversationMemory[n.id] = Math.min(10000, visits + 1);
   n.pauseUntil = Math.max(n.pauseUntil || 0, world.time + 9);
   activeBanter = { n, lines, turn: 1, at: world.time + 1.3, recorded: !!record };
   say(s, 'AUDITOR: “' + lines[0] + '”');

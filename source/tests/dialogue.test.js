@@ -37,3 +37,19 @@ console.log(
   Object.values(BANKS).flat().length +
     ' original lines: routing, no-repeat bags, clean language, and save migration passed.',
 );
+
+assert.equal(Object.values(BANKS).flat().length, 1000);
+for (const text of Object.values(BANKS).flat()) {
+  assert.ok(text.length > 5 && text.length < 140, text);
+  assert.doesNotMatch(language(text), /\b(?:fuck\w*|shit\w*|ass|asshole\w*|piss\w*|damn)\b/i);
+}
+const memorySave = fresh();
+memorySave.conversationMemory = { 1: 4 };
+assert.ok(validSave(memorySave));
+assert.equal(migrateSave(JSON.parse(JSON.stringify(memorySave))).conversationMemory['1'], 4);
+const legacy = fresh();
+delete legacy.conversationMemory;
+assert.ok(validSave(legacy));
+assert.deepEqual(migrateSave(legacy).conversationMemory, {});
+for (const memory of [null, [], { 1: -1 }, { 1: Infinity }, { 1: 10001 }, { oops: 1 }])
+  assert.equal(validSave({ ...fresh(), conversationMemory: memory }), false);

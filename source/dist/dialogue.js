@@ -1,3 +1,4 @@
+import { EXTRA_LINES } from './dialogue-expansion.js';
 // Original dialogue. No runtime language model, network calls, or borrowed game lines.
 const lines = (text) =>
   text
@@ -208,13 +209,15 @@ I’m getting soaked. Can we finish this?
 Your lens has water on it. There’s your cover-up.
 I left my umbrella inside. Please let me pass.`),
 };
+for (const [key, lines] of Object.entries(EXTRA_LINES)) BANKS[key].push(...lines);
+
 export function language(text, explicit = false) {
   if (explicit) return String(text);
   return String(text)
     .replace(/\bpiece of shit\b/gi, 'Poop')
     .replace(/\bfuck(?:ing|ed|er|s)?\b/gi, '[bleep]')
     .replace(
-      /\b(?:shit(?:ty|s|ting)?|bullshit|assholes?|bastards?|bitch(?:es)?|piss(?:ed|ing)?|damn|hell|crap)\b/gi,
+      /\b(?:shit(?:ty|s|ting)?|bullshit|ass(?:es)?|assholes?|bastards?|bitch(?:es)?|piss(?:ed|ing)?|damn|hell|crap)\b/gi,
       '[bleep]',
     );
 }

@@ -116,6 +116,7 @@ export function fresh() {
     mirrorSeed: Math.floor(Math.random() * 1e9),
     spray: 0,
     clips: [],
+    conversationMemory: {},
     ledger: [],
     published: 0,
     claims: 0,
@@ -276,6 +277,18 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (
+    o?.conversationMemory !== undefined &&
+    (!o.conversationMemory ||
+      typeof o.conversationMemory !== 'object' ||
+      Array.isArray(o.conversationMemory) ||
+      Object.keys(o.conversationMemory).length > 32 ||
+      !Object.entries(o.conversationMemory).every(
+        ([id, count]) =>
+          /^[1-9][0-9]?$/.test(id) && Number.isSafeInteger(count) && count >= 0 && count <= 10000,
+      ))
+  )
+    return false;
   if (o?.voices !== undefined && typeof o.voices !== 'boolean') return false;
   if (
     o?.voiceVolume !== undefined &&

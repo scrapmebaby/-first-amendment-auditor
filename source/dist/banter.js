@@ -1,5 +1,6 @@
 // Original fictional exchanges. Sources informed situations, not copied dialogue.
 // Each row is auditor / civilian / auditor / civilian, kept together for coherence.
+import { EXTRA_EXCHANGES } from './banter-expansion.js';
 import { language } from './dialogue.js';
 const group = (text) =>
   text
@@ -55,13 +56,23 @@ I'm remaining completely professional. | You're wearing a fucking clown mask and
 I'm documenting the conditions on this public sidewalk. | Then document the puddle and let me get past. | Are you directing my coverage? | I'm directing my dry shoe around your foot.
 Can you make a brief statement about today's events? | It's raining. I would like to go inside. | Anything else for the viewers? | Bring a coat. Leave people alone.`),
 };
+for (const [key, rows] of Object.entries(EXTRA_EXCHANGES)) (EXCHANGES[key] ??= []).push(...rows);
+
 export class Banter {
   constructor(random = Math.random) {
     this.random = random;
     this.bags = new Map();
     this.last = new Map();
   }
-  pick({ place = '', weather = '', reputation = 0, patience = 100, explicit = false } = {}) {
+  pick({
+    place = '',
+    weather = '',
+    reputation = 0,
+    patience = 100,
+    explicit = false,
+    temperament = '',
+    visits = 0,
+  } = {}) {
     let key =
       patience < 25
         ? 'enraged'
@@ -76,7 +87,15 @@ export class Banter {
                 : weather === 'rain'
                   ? 'rain'
                   : 'street';
-    if (patience >= 50 && reputation >= 20 && this.random() < 0.35) key = 'recognized';
+    if (patience >= 50) {
+      if (visits > 0 && this.random() < 0.4) key = 'remembered';
+      else if (reputation >= 20 && this.random() < 0.35) key = 'recognized';
+      else if (
+        ['irritable', 'anxious', 'defiant', 'avoidant'].includes(temperament) &&
+        this.random() < 0.3
+      )
+        key = temperament;
+    }
     let bag = this.bags.get(key);
     if (!bag?.length) {
       bag = EXCHANGES[key].map((_, i) => i);

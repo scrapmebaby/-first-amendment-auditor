@@ -33,6 +33,7 @@ const fs = require('node:fs'),
       [true, false, true, false],
     );
     assert.equal(await page.evaluate(() => auditorDebug.recording), false);
+    assert.equal(await page.evaluate(() => auditorDebug.snapshot().conversationMemory['1']), 1);
     await page.screenshot({ path: root + '/preview-banter-portrait.png' });
     await page.click('#conversationToggle');
     assert.equal(await page.locator('#conversationLines').isVisible(), false);
@@ -55,6 +56,17 @@ const fs = require('node:fs'),
     const panel = await page.locator('#conversation').boundingBox(),
       stick = await page.locator('#thumbstick').boundingBox();
     assert.ok(panel.x >= stick.x + stick.width);
+    const remembered = await page.evaluate(() => auditorDebug.snapshot().conversationMemory['1']);
+    assert.ok(remembered >= 2);
+    await page.click('#menuToggle');
+    await page.click('#settings');
+    await page.click('#saveNow');
+    await page.reload();
+    await page.waitForFunction(() => window.auditorDebug);
+    assert.equal(
+      await page.evaluate(() => auditorDebug.snapshot().conversationMemory['1']),
+      remembered,
+    );
     assert.deepEqual(errors, []);
     console.log(
       'Mobile two-way conversation, four coherent turns without recording, collapse, captured speakers and landscape layout passed.',

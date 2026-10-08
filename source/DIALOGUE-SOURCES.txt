@@ -32,3 +32,5 @@ Implementation: 41 authored four-turn exchanges (164 lines), plus the existing
 recognized or heated pools. Shuffled bags avoid reuse until a pool is exhausted.
 Each exchange stays paired so replies answer the preceding line. Real gameplay
 reactions (leaving, music, crying, police, violence) can interrupt the banter.
+
+v0.13.0 expansion: All 274 additional four-turn exchanges and 800 additional situational lines are original fictional writing. No additional transcript extraction or quotation was used. Fixed authored dialogue is selected by location, temperament, escalation and saved encounter history; counts do not include hypothetical template permutations.
