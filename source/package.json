@@ -1,12 +1,12 @@
 {
   "name": "first-amendment-auditor",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 8080 --directory dist",
-    "test": "node tests/core.test.js && node tests/campaign.test.js && node tests/dialogue.test.js && node tests/movement.test.js && node tests/appearance.test.js && node tests/controller.test.js && node tests/display.test.js && node tests/touch.test.js && node tests/banter.test.js && node tests/voices.test.js",
-    "check": "node --check dist/app.js && node --check dist/world.js && node --check dist/core.js && node --check dist/three-world.js && node --check dist/characters.js && node --check dist/cast-studio.js && node --check dist/dialogue.js && node --check dist/movement.js && node --check dist/audio.js && node --check dist/appearance.js && node --check dist/controller.js && node --check dist/display.js && node --check dist/touch-input.js && node --check dist/banter.js && node --check dist/voices.js && node --check dist/banter-expansion.js && node --check dist/dialogue-expansion.js",
+    "test": "node tests/core.test.js && node tests/campaign.test.js && node tests/dialogue.test.js && node tests/movement.test.js && node tests/appearance.test.js && node tests/controller.test.js && node tests/display.test.js && node tests/touch.test.js && node tests/banter.test.js && node tests/voices.test.js && node tests/police-contact.test.js",
+    "check": "node --check dist/app.js && node --check dist/world.js && node --check dist/core.js && node --check dist/three-world.js && node --check dist/characters.js && node --check dist/cast-studio.js && node --check dist/dialogue.js && node --check dist/movement.js && node --check dist/audio.js && node --check dist/appearance.js && node --check dist/controller.js && node --check dist/display.js && node --check dist/touch-input.js && node --check dist/banter.js && node --check dist/voices.js && node --check dist/banter-expansion.js && node --check dist/dialogue-expansion.js && node --check dist/police-contact.js",
     "build": "python3 build.py",
     "format": "prettier --write \"dist/*.js\" \"dist/*.css\" \"tests/*.{js,cjs}\"",
     "format:check": "prettier --check \"dist/*.js\" \"dist/*.css\" \"tests/*.{js,cjs}\""

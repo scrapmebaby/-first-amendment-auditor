@@ -470,6 +470,7 @@ export class World {
     this.box(x, 0.8, z, 1.15, 1.15, 0.65, shirt);
     this.box(x, 1.95, z, 0.72, 0.72, 0.72, skin);
     this.box(x, 2.57, z, 0.78, 0.22, 0.75, n.hair || '#665a45');
+    if (n.id === 0 && n.gender === 'female') this.box(x, 2.4, z - 0.3, 0.6, 0.5, 0.5, '#645448');
     const arm =
       emotional && (n.emotion === 'rage' || n.emotion === 'throw')
         ? 1.8 + Math.sin(t * 12) * 0.4
@@ -596,12 +597,17 @@ export class World {
           this.time,
         );
     }
+    if (this.streetOfficer)
+      this.person({ ...this.streetOfficer, color: '#495a65', skin: '#bd9572' }, this.time);
+    if (this.supervisor)
+      this.person({ ...this.supervisor, color: '#495a65', skin: '#bd9572' }, this.time);
     if (!s.driving) {
       this.flat(s.x, s.z, 2.9, 2.9, '#e2f191', 0.15);
       this.person(
         {
           x: s.x,
           z: s.z,
+          gender: s.gender,
           player: s.campaign?.career === 'auditor',
           working: s.campaign?.serviceTask?.jobId,
           mask: s.mask,

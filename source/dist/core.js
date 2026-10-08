@@ -92,6 +92,14 @@ export const ITEMS = [
 export function fresh() {
   return {
     version: VERSION,
+    gender: 'male',
+    genderChosen: false,
+    officerHistory: { day: 1, counts: {} },
+    settlementGross: 0,
+    settlementFees: 0,
+    claimFilingFees: 0,
+    taxpayerCost: 0,
+    hospitalBills: 0,
     cash: 0,
     revenue: 0,
     expenses: 0,
@@ -201,7 +209,7 @@ export function estimate(s, c, cut) {
     (Math.min(c.seconds, 90) * 45 + c.drama * 180 + 80) * mult * (cut ? 2.1 : 1) * reach,
   );
   const likes = Math.floor(views * (0.012 + audience * 0.028));
-  const rpm = 3 + audience * 4;
+  const rpm = 4.5 + audience * 6;
   const income = c.music || s.campaign?.demonetized ? 0 : Math.round((views * rpm) / 10) / 100;
   let cost = 3.5 + (cut ? 4.5 : 1);
   for (const [g, v] of [
@@ -245,38 +253,89 @@ export function finishClip(s, record, audience = Math.random()) {
   return clip;
 }
 export function resolveClaim(s, e, r = Math.random()) {
+  if (!e || e.claimResolved)
+    return { kind: 'dismissed', payout: 0, text: 'This claim has already been processed.' };
+  e.claimResolved = true;
   s.claims++;
-  transaction(s, -12, 'Civil claim filing / paperwork');
-  if (!e.touched)
-    return {
-      kind: 'dismissed',
-      text: 'No contact. No supported claim. Your lawyer sends an invoice anyway.',
-      payout: 0,
-    };
-  if (e.playerSprayed)
-    return {
-      kind: 'dismissed',
-      text: 'The uncut footage shows your spray use. Claim dismissed.',
-      payout: 0,
-    };
-  if (r < 0.28) {
-    const payout = 50 + Math.floor(r * 210);
-    transaction(s, payout, 'Civil settlement (fictional)');
-    transaction(s, -Math.round(payout * 0.4), 'Legal fees: 40%');
+  const filing = 12,
+    defense = 75;
+  transaction(s, -filing, 'Civil claim filing / paperwork');
+  s.claimFilingFees = (s.claimFilingFees ?? 0) + filing;
+  s.taxpayerCost = (s.taxpayerCost ?? 0) + defense;
+  const strong = e.recordedMisconduct && e.officerMisconduct;
+  const eligible = strong || (e.touched && !e.playerSprayed);
+  const forceEvidence = strong && e.officerForce && e.recordedForce;
+  const chance = strong ? (forceEvidence ? 0.7 : 0.45) : 0.2;
+  if (eligible && r < chance) {
+    const min = strong ? (forceEvidence ? 600 : 300) : 150;
+    const range = strong ? (forceEvidence ? 1200 : 600) : 250;
+    const payout = min + Math.floor((r / chance) * range);
+    const legalFees = Math.round(payout * 0.3 * 100) / 100;
+    transaction(s, payout, 'City settlement — taxpayer-funded (fictional)');
+    transaction(s, -legalFees, 'Settlement lawyer fee: 30%');
+    s.settlementGross = (s.settlementGross ?? 0) + payout;
+    s.settlementFees = (s.settlementFees ?? 0) + legalFees;
+    s.taxpayerCost += payout;
     s.society = clamp(s.society - 2, -100, 0);
     return {
       kind: 'settled',
-      text: `Settlement: ${money(payout)}. Your lawyer takes 40%. Nobody calls this a win.`,
       payout,
+      legalFees,
+      net: Math.round((payout - legalFees - filing) * 100) / 100,
+      taxpayerCost: payout + defense,
+      text: `Won ${money(payout)} from the city. Lawyer: ${money(legalFees)}. Filing: ${money(filing)}. Net gain: ${money(payout - legalFees - filing)}. Taxpayer cost: ${money(payout + defense)} including ${money(defense)} city legal costs. Hospital and repair bills remain separate.`,
     };
   }
   return {
     kind: 'dismissed',
-    text: 'The full recording contradicts your edit. Claim dismissed. The bill stands.',
     payout: 0,
+    net: -filing,
+    taxpayerCost: defense,
+    text: `Claim dismissed. Your filing cost: ${money(filing)}. City legal costs charged to taxpayers: ${money(defense)}. Civilian contact or demanding a supervisor does not guarantee city liability.`,
   };
 }
 export function validSave(o) {
+  if (o?.officerHistory !== undefined) {
+    const h = o.officerHistory;
+    if (
+      !h ||
+      !Number.isSafeInteger(h.day) ||
+      h.day < 1 ||
+      !h.counts ||
+      typeof h.counts !== 'object' ||
+      Array.isArray(h.counts) ||
+      Object.keys(h.counts).length > 10 ||
+      !Object.entries(h.counts).every(
+        ([id, count]) => /^9[0-9]$/.test(id) && Number.isInteger(count) && count >= 0 && count <= 4,
+      )
+    )
+      return false;
+  }
+  if (o?.gender !== undefined && !['male', 'female'].includes(o.gender)) return false;
+  if (o?.genderChosen !== undefined && typeof o.genderChosen !== 'boolean') return false;
+  for (const key of [
+    'settlementGross',
+    'settlementFees',
+    'claimFilingFees',
+    'taxpayerCost',
+    'hospitalBills',
+  ])
+    if (o?.[key] !== undefined && (!Number.isFinite(o[key]) || o[key] < 0 || o[key] > 1e9))
+      return false;
+  if (
+    o?.pendingReport &&
+    [
+      'officerMisconduct',
+      'officerForce',
+      'recordedForce',
+      'recordedMisconduct',
+      'supervisorRequested',
+      'supervisorReviewed',
+      'disciplineReferral',
+      'claimResolved',
+    ].some((key) => o.pendingReport[key] !== undefined && typeof o.pendingReport[key] !== 'boolean')
+  )
+    return false;
   if (
     o?.conversationMemory !== undefined &&
     (!o.conversationMemory ||
@@ -443,6 +502,7 @@ export function migrateSave(o) {
   return {
     ...base,
     ...o,
+    genderChosen: o.genderChosen ?? true,
     mirrorSeed: o.mirrorSeed ?? 1977,
     moving: false,
     carSpeed: 0,

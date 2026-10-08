@@ -416,6 +416,22 @@ export const AUDITOR = {
     'A forward-leaning belly, a tired press lanyard, stained shirt and a few strategically absent teeth.',
   habit: 'Tilts the camera up before tilting the truth.',
 };
+export function auditorDesign(gender = 'male') {
+  return gender === 'female'
+    ? {
+        ...AUDITOR,
+        name: 'The auditor',
+        hairdo: 'bun',
+        height: 0.92,
+        width: 1.44,
+        face: 1.1,
+        nose: 0.23,
+        lean: 0.09,
+        detail:
+          'A broad, forward-leaning silhouette, an untidy bun, a stained press shirt and missing teeth.',
+      }
+    : AUDITOR;
+}
 export const SUPPORT = [
   {
     ...CAST[8],
@@ -1269,16 +1285,26 @@ export class Character {
     this.body.rotation.z =
       mood === 'rage' ? Math.sin(t * 9) * 0.065 : Math.sin(t * 1.7 + this.phase) * 0.009;
     this.legs.forEach((g, i) => {
-      g.rotation.x = moving
-        ? wave * (i ? -0.38 : 0.38)
-        : mood === 'rage'
-          ? Math.sin(t * 10 + i * 2) * 0.16
-          : 0;
+      g.rotation.x =
+        mood === 'attack'
+          ? i
+            ? -Math.max(0, Math.sin(t * 12)) * 1.1
+            : 0.12
+          : moving
+            ? wave * (i ? -0.38 : 0.38)
+            : mood === 'rage'
+              ? Math.sin(t * 10 + i * 2) * 0.16
+              : 0;
     });
     this.arms.forEach((g, i) => {
       const sign = i ? 1 : -1;
       g.rotation.set(moving ? -wave * sign * 0.35 : 0.045, 0, sign * 0.075);
       g.userData.fore.rotation.set(-0.12, 0, 0);
+      if (mood === 'attack') {
+        g.rotation.x = -1.2 - Math.sin(t * 12 + i * Math.PI) * 0.6;
+        g.rotation.z = sign * 0.12;
+        g.userData.fore.rotation.x = -0.2;
+      }
       if (mood === 'rage') {
         g.rotation.z = sign * (0.85 + Math.sin(t * 7 + i) * 0.35);
         g.rotation.x = -0.4;

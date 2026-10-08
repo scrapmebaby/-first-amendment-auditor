@@ -26,7 +26,7 @@ import { gaussianBlur } from 'three/addons/tsl/display/GaussianBlurNode.js';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 import { World } from './world.js';
 import { WEATHER } from './atmosphere.js';
-import { Character, CAST, AUDITOR, SUPPORT } from './characters.js';
+import { Character, CAST, AUDITOR, auditorDesign, SUPPORT } from './characters.js';
 
 THREE.ColorManagement.define({ [DisplayP3ColorSpace]: DisplayP3ColorSpaceImpl });
 
@@ -529,8 +529,14 @@ export class ThreeWorld extends World {
       key = n.player === false ? 'auditor-service' : 'auditor';
       design =
         n.player === false
-          ? { ...AUDITOR, id: 'auditor-service', shirt: '#8aa4a0', outfit: 'work', prop: 'badge' }
-          : AUDITOR;
+          ? {
+              ...auditorDesign(n.gender),
+              id: 'auditor-service',
+              shirt: '#8aa4a0',
+              outfit: 'work',
+              prop: 'badge',
+            }
+          : auditorDesign(n.gender);
     } else if (crew) {
       key = `crew-${n.id}`;
       design = SUPPORT[n.id === 80 ? 0 : 1];
@@ -546,7 +552,11 @@ export class ThreeWorld extends World {
     }
     if (n.id === 0 && MERCH[n.merch]) design = { ...design, shirt: MERCH[n.merch].color };
     let actor = this.people.get(key);
-    if (actor && n.id === 0 && actor.merchAppearance !== (n.merch || null)) {
+    if (
+      actor &&
+      n.id === 0 &&
+      (actor.merchAppearance !== (n.merch || null) || actor.genderAppearance !== n.gender)
+    ) {
       this.scene.remove(actor.root);
       actor.dispose();
       this.people.delete(key);
@@ -555,6 +565,7 @@ export class ThreeWorld extends World {
     if (!actor) {
       actor = new Character(design);
       actor.merchAppearance = n.merch || null;
+      actor.genderAppearance = n.gender;
       this.people.set(key, actor);
       this.scene.add(actor.root);
     }
@@ -565,7 +576,9 @@ export class ThreeWorld extends World {
       t,
       n.id === 0 && this.playerState?.viewMode === 'first'
         ? { heading: this.playerState.lookYaw }
-        : {},
+        : n.emotion === 'attack' && n.emotionUntil > t
+          ? { heading: n.attackHeading ?? null }
+          : {},
     );
     if (n.id === 0)
       actor.root.traverse((object) =>

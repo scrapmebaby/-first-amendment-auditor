@@ -52,6 +52,7 @@ const fs = require('node:fs'),
     });
     await page.goto('http://127.0.0.1:' + server.address().port);
     await page.waitForFunction(() => window.auditorDebug);
+    if (await page.locator('#chooseMale').isVisible()) await page.click('#chooseMale');
     await page.click('#menuToggle');
     await page.click('#settings');
     await page.click('#previewVoices');
@@ -76,6 +77,7 @@ const fs = require('node:fs'),
     );
     await page.reload();
     await page.waitForFunction(() => window.auditorDebug);
+    if (await page.locator('#chooseMale').isVisible()) await page.click('#chooseMale');
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().voices), true);
     assert.equal(await page.evaluate(() => auditorDebug.snapshot().voiceVolume), 0.4);
     assert.deepEqual(errors, []);

@@ -1,3 +1,9 @@
+import {
+  officerResponse,
+  supervisorFinding,
+  beginOfficerContact,
+  rememberOfficerRound,
+} from './police-contact.js';
 import { CharacterSpeech } from './voices.js';
 import { Banter } from './banter.js';
 import { TouchInput } from './touch-input.js';
@@ -107,6 +113,9 @@ try {
 }
 progressCareer(s);
 const world = new World($('world'), $('labels'));
+world.streetOfficer = { id: 92, x: 7, z: -10, name: 'Officer Vale' };
+let officerContact = null,
+  officerLines = [];
 world.atmosphere.choice = s.weather || 'living';
 $('engine').textContent = await world.init();
 if (!world.camera) s.viewMode = 'overhead';
@@ -187,6 +196,9 @@ let npcs = npcSpawns.map(([x, z], i) => ({
   inCustody: false,
 }));
 function resetLocals() {
+  officerContact = null;
+  officerLines = [];
+  world.supervisor = null;
   characterSpeech.stop();
   activeBanter = null;
   conversationLines.length = 0;
@@ -250,9 +262,11 @@ function conversationLine(n, text) {
     auditor,
     speaker: auditor
       ? 'YOU · AUDITOR'
-      : /^OFFICER:/.test(text)
-        ? 'OFFICER'
-        : n.name?.split(' · ')[0] || 'LOCAL',
+      : n.isSupervisor
+        ? 'SUPERVISOR'
+        : /^OFFICER:/.test(text)
+          ? 'OFFICER'
+          : n.name?.split(' · ')[0] || 'LOCAL',
     text: text.replace(/^(?:AUDITOR|OFFICER):\s*/, '').replace(/^[“”]|[“”]$/g, ''),
   });
   if (conversationLines.length > 12) conversationLines.shift();
@@ -336,7 +350,13 @@ function say(n, text) {
   conversationLine(n, text);
   syncVoices();
   characterSpeech.speak(
-    /^OFFICER:/.test(text) ? 'officer' : n === s ? 'auditor' : `local-${n.id ?? n.name}`,
+    /^OFFICER:/.test(text)
+      ? n.isSupervisor
+        ? 'supervisor'
+        : 'officer'
+      : n === s
+        ? `auditor-${s.gender}`
+        : `local-${n.id ?? n.name}`,
     text,
   );
   if (
@@ -416,8 +436,17 @@ function toggleFilm() {
     stopRecording();
     return;
   }
+  if (
+    nearOfficer() &&
+    (!target ||
+      Math.hypot(target.x - s.x, target.z - s.z) >
+        Math.hypot(nearOfficer().x - s.x, nearOfficer().z - s.z))
+  ) {
+    startOfficerFilm(nearOfficer());
+    return;
+  }
   if (!target) {
-    notify('Get closer to a local to begin an encounter.');
+    notify('Get closer to a local or officer to begin an encounter.');
     return;
   }
   if (s.clips.length >= 30) {
@@ -476,6 +505,20 @@ function engage() {
   engageCooldown = 2.8;
   if (s.driving) {
     notify('Your rusty sedan isn’t a press credential. Get out first.');
+    return;
+  }
+  if (
+    nearOfficer() &&
+    (record?.officer ||
+      !target ||
+      Math.hypot(target.x - s.x, target.z - s.z) >
+        Math.hypot(nearOfficer().x - s.x, nearOfficer().z - s.z))
+  ) {
+    talkOfficer();
+    return;
+  }
+  if (record?.officer) {
+    notify('Move closer to the officer or finish this take.');
     return;
   }
   if (!target) {
@@ -666,12 +709,183 @@ function car() {
   save();
   updateUI();
 }
+
+function chooseCharacter() {
+  openModal(
+    'character',
+    'Choose your auditor.',
+    `<p class="intro">Same questionable business plan. Choose your character; appearance changes in town and mirrors. You can change this later in Settings.</p><div class="setting-actions"><button class="primary" id="chooseMale">Male · rumpled shirt, thinning hair</button><button class="primary" id="chooseFemale">Female · rumpled shirt, untidy bun</button></div>`,
+  );
+  $('closeModal').disabled = true;
+  for (const [id, gender] of [
+    ['chooseMale', 'male'],
+    ['chooseFemale', 'female'],
+  ])
+    $(id).onclick = () => {
+      s.gender = gender;
+      s.genderChosen = true;
+      save();
+      $('closeModal').disabled = false;
+      closeModal();
+      updateUI();
+    };
+}
+$('modal').addEventListener('cancel', (event) => {
+  if (modalType === 'character' && !s.genderChosen) event.preventDefault();
+});
+function nearOfficer() {
+  if (s.driving || s.campaign.career !== 'auditor') return null;
+  return (
+    [...(world.patrol?.officers || []), world.streetOfficer]
+      .filter(Boolean)
+      .filter((n) => Math.hypot(n.x - s.x, n.z - s.z) < 10)
+      .sort((a, b) => Math.hypot(a.x - s.x, a.z - s.z) - Math.hypot(b.x - s.x, b.z - s.z))[0] ||
+    null
+  );
+}
+function startOfficerFilm(off) {
+  if (record) return;
+  if (s.campaign.condition <= 0 || s.clips.length >= 30) {
+    notify('Repair your camera or clear saved takes before filming.');
+    return;
+  }
+  record = {
+    events: [],
+    seconds: 0,
+    drama: 0,
+    music: false,
+    touched: false,
+    place: locationAt(off.x, off.z).name,
+    person: off.name || 'Responding officer',
+    npcId: off.id,
+    officer: true,
+  };
+  record.hasVideo = capture.start(world);
+  updateUI();
+}
+function contactOfficer(off) {
+  if (!officerContact || officerContact.id !== off.id || officerContact.day !== s.day) {
+    const report = policeEvent?.encounter ||
+      s.pendingReport || { touched: false, playerSprayed: false, arrest: false };
+    officerContact = beginOfficerContact(s, off.id, report);
+    if (report.supervisorRequested && !report.supervisorReviewed) {
+      officerContact.supervisorAt = world.time + 4;
+      officerContact.supervisorOrigin = { x: off.x, z: off.z };
+    }
+    if (!policeEvent) s.pendingReport = report;
+  }
+  return officerContact;
+}
+function talkOfficer() {
+  const off = nearOfficer();
+  if (!off || officerLines.length) return;
+  const contact = contactOfficer(off);
+  if (contact.rounds >= 4) {
+    notify('This officer has ended the exchange. File a complaint or move on.');
+    return;
+  }
+  activeBanter = null;
+  startOfficerFilm(off);
+  const result = officerResponse(contact, rollEncounter());
+  rememberOfficerRound(s, contact);
+  say(s, 'AUDITOR: ' + result.auditor);
+  captured('AUDITOR: ' + result.auditor);
+  officerLines.push({ at: world.time + 2, off, result });
+  save();
+}
+function askSupervisor() {
+  const off = nearOfficer();
+  if (!off) return;
+  const contact = contactOfficer(off);
+  if (contact.report.supervisorRequested) {
+    notify('Your supervisor request is already logged.');
+    return;
+  }
+  contact.report.supervisorRequested = true;
+  contact.supervisorAt = world.time + 7;
+  contact.supervisorOrigin = { x: off.x, z: off.z };
+  say(s, 'AUDITOR: I want your supervisor. I am filing a complaint about your conduct!');
+  captured('Auditor demands a supervisor and threatens a conduct complaint');
+  notify('Supervisor requested. Stay nearby for the review.');
+  save();
+  updateUI();
+}
+function tickOfficerContact(dt) {
+  const c = officerContact;
+  if (!c) return;
+  if (officerLines.length && world.time >= officerLines[0].at && !characterSpeech.busy) {
+    const pending = officerLines[0];
+    if (
+      pending.result.damage &&
+      Math.hypot(pending.off.x - s.x, pending.off.z - s.z) > 2.8 &&
+      Math.hypot(pending.off.x - s.x, pending.off.z - s.z) <= 12 &&
+      !s.driving
+    ) {
+      navigator.walk(pending.off, { x: s.x + 1.2, z: s.z }, 4, dt, npcs);
+      return;
+    }
+    const { off, result } = officerLines.shift();
+    if (s.driving || Math.hypot(off.x - s.x, off.z - s.z) > 12) return;
+    say(off, 'OFFICER: ' + result.officer);
+    captured('OFFICER: ' + result.officer);
+    captured(result.event);
+    if (record)
+      record.drama = clamp(record.drama + (result.kind === 'professional' ? 2 : 8), 0, 100);
+    if (result.kind !== 'professional') {
+      c.report.officerMisconduct = true;
+      c.report.recordedMisconduct = !!c.report.recordedMisconduct || !!record;
+      off.emotion = 'rage';
+      off.emotionUntil = world.time + 5;
+    }
+    if (result.damage) {
+      off.emotion = 'attack';
+      off.emotionUntil = world.time + 1.6;
+      off.attackHeading = Math.atan2(s.x - off.x, s.z - off.z);
+      c.report.officerForce = true;
+      c.report.recordedForce = !!c.report.recordedForce || !!record;
+      c.report.touched = true;
+      if (record) record.touched = true;
+      s.health = clamp(s.health - result.damage, 0, 100);
+      damageEquipment(s, 15);
+      notify(
+        `Officer strikes you: health −${result.damage}. Excessive force added to your complaint.`,
+      );
+      if (s.health <= 15) hospital();
+    }
+    save();
+  }
+  if (
+    c.supervisorAt &&
+    world.time >= c.supervisorAt &&
+    !officerLines.length &&
+    !characterSpeech.busy
+  ) {
+    c.supervisorAt = 0;
+    c.report.supervisorReviewed = true;
+    world.supervisor = {
+      id: 93,
+      x: c.supervisorOrigin.x + 2,
+      z: c.supervisorOrigin.z + 2,
+      isSupervisor: true,
+    };
+    const finding = supervisorFinding(c.report);
+    c.report.disciplineReferral = finding.substantiated;
+    if (Math.hypot(s.x - world.supervisor.x, s.z - world.supervisor.z) < 16) {
+      say(world.supervisor, 'OFFICER: ' + finding.text);
+      captured('SUPERVISOR: ' + finding.text);
+    }
+    notify(finding.text);
+    save();
+  }
+}
+
 function hospital() {
   s.campaign.hospitals++;
   s.campaign.stress = clamp(s.campaign.stress + 15, 0, 100);
   if (encounter && !encounter.called) police();
   if (record) stopRecording();
   transaction(s, -65, 'Hospital: bruised ego & actual bruises');
+  s.hospitalBills += 65;
   s.health = 100;
   s.x = -66;
   s.z = 40;
@@ -706,6 +920,9 @@ function violentEncounter(n, r) {
     s.health = clamp(s.health - 8, 0, 100);
     notify(damage);
   } else {
+    n.emotion = 'attack';
+    n.emotionUntil = world.time + 1.6;
+    n.attackHeading = Math.atan2(s.x - n.x, s.z - n.z);
     const hit = 28 + Math.floor(s.campaign.reputation * 0.35);
     s.health = clamp(s.health - hit, 0, 100);
     damageEquipment(s, 20);
@@ -915,6 +1132,13 @@ function advancePolice(dt) {
       world.patrol = null;
       policeEvent = null;
       s.pendingReport = {
+        officerMisconduct: !!e.encounter.officerMisconduct,
+        officerForce: !!e.encounter.officerForce,
+        recordedForce: !!e.encounter.recordedForce,
+        recordedMisconduct: !!e.encounter.recordedMisconduct,
+        supervisorRequested: !!e.encounter.supervisorRequested,
+        supervisorReviewed: !!e.encounter.supervisorReviewed,
+        disciplineReferral: !!e.encounter.disciplineReferral,
         touched: e.encounter.touched,
         playerSprayed: !!e.encounter.playerSprayed,
         unprovokedSpray: !!e.encounter.unprovokedSpray,
@@ -946,23 +1170,25 @@ function policeReport() {
     return;
   }
   if (record) stopRecording();
-  const text = e.escaped
-    ? 'The civilian left while officers required your written statement. No arrest was made. Your complaint is on file; your equipment and hospital bills remain.'
-    : e.arrest
-      ? 'The camera captured the officer escorting a local into the patrol car. Arrest is not a conviction. The full footage remains evidence.'
-      : e.unprovokedSpray
-        ? 'Officers reviewed your spray use. You received a citation. The uncut footage travels faster than your version.'
-        : 'Officers separated everyone. No arrest. An awkward silence is not a crime.';
+  const text = e.officerMisconduct
+    ? 'Your complaint includes alleged officer misconduct. Recorded threats or excessive force strengthen the fictional city claim; a supervisor request alone does not.'
+    : e.escaped
+      ? 'The civilian left while officers required your written statement. No arrest was made. Your complaint is on file; your equipment and hospital bills remain.'
+      : e.arrest
+        ? 'The camera captured the officer escorting a local into the patrol car. Arrest is not a conviction. The full footage remains evidence.'
+        : e.unprovokedSpray
+          ? 'Officers reviewed your spray use. You received a citation. The uncut footage travels faster than your version.'
+          : 'Officers separated everyone. No arrest. An awkward silence is not a crime.';
   openModal(
     'police',
     'The incident report.',
-    `<p class="intro">You asked police to pursue charges against the civilian. ${text}</p><div class="clip"><h3>Separate hustle: sue the city?</h3><p class="intro">A fictional civil claim costs $12 to file. Contact alone does not prove city liability. Settlements are uncertain; lawyers keep 40%.</p><button class="primary" id="claim">File a claim · $12</button></div><p class="modal-note">Simplified game outcomes, not legal advice.</p>`,
+    `<p class="intro">${e.officerMisconduct ? 'You filed a complaint about officer conduct.' : 'You asked police to pursue charges against the civilian.'} ${text} ${e.disciplineReferral ? 'The supervisor referred the officer for disciplinary investigation.' : ''}</p><div class="clip"><h3>Separate hustle: sue the city?</h3><p class="intro">A fictional civil claim costs $12 to file. Contact alone does not prove city liability. Settlements are uncertain; lawyers keep 30%. Recorded officer threats can win $300–$900; recorded excessive force $600–$1,800. Weaker contact claims win less often. City legal costs are $75 per filing, even when you lose.</p><button class="primary" id="claim">File a claim · $12</button></div><p class="modal-note">Simplified game outcomes, not legal advice.</p>`,
   );
   $('claim').onclick = () => {
-    const result = resolveClaim(s, e);
+    const result = resolveClaim(s, e, rollEncounter());
     delete s.pendingReport;
     $('modalBody').innerHTML =
-      `<div class="empty"><div class="big">⚖</div><h3>${result.kind === 'settled' ? 'A victory. For the billing department.' : 'Case closed. Invoice open.'}</h3><p>${esc(result.text)}</p><button id="backTown" class="primary">Back to the sidewalk</button></div>`;
+      `<div class="empty"><div class="big">⚖</div><h3>${result.kind === 'settled' ? 'City settlement awarded.' : 'Case closed. Invoice open.'}</h3><p>${esc(result.text)}</p><button id="backTown" class="primary">Back to the sidewalk</button></div>`;
     $('backTown').onclick = closeModal;
     save();
     updateUI();
@@ -1091,6 +1317,7 @@ function openModal(type, title, body) {
   if (!$('modal').open) $('modal').showModal();
 }
 function closeModal() {
+  if (modalType === 'character' && !s.genderChosen) return;
   characterSpeech.stop();
   keys.clear();
   studio?.dispose();
@@ -1235,14 +1462,14 @@ function ledger() {
   openModal(
     'ledger',
     'The cost of doing “good.”',
-    `<p class="intro">The numbers are unedited. That’s the problem.</p><div class="ledger-totals"><div><small>REVENUE</small><strong>${money(s.revenue)}</strong></div><div><small>EXPENSES</small><strong>${money(s.expenses)}</strong></div><div><small>NET PROFIT</small><strong class="${s.revenue < s.expenses ? 'negative' : ''}">${money(s.revenue - s.expenses)}</strong></div></div><p class="intro">Loan principal owed: ${money(s.campaign.loanDebt)}. Borrowing increases cash, not earnings.</p><div class="clip"><h3>Society improved: ${s.society}%</h3><p class="intro">${s.published} uploads. ${s.views.toLocaleString()} views. ${s.likes.toLocaleString()} likes. ${s.claims} civil claims. ${s.society === 0 ? 'No measurable public benefit.' : 'An increasing number of people miss the quiet.'}</p></div>${s.ledger.length ? s.ledger.map((l) => `<div class="ledger-row"><div>${esc(l.label)}<small>DAY ${l.day}</small></div><b class="${l.amount < 0 ? 'negative' : ''}">${l.amount > 0 ? '+' : ''}${money(l.amount)}</b></div>`).join('') : '<p class="intro">No transactions yet. These are the good old days.</p>'}`,
+    `<p class="intro">The numbers are unedited. That’s the problem.</p><div class="ledger-totals"><div><small>REVENUE</small><strong>${money(s.revenue)}</strong></div><div><small>EXPENSES</small><strong>${money(s.expenses)}</strong></div><div><small>NET PROFIT</small><strong class="${s.revenue < s.expenses ? 'negative' : ''}">${money(s.revenue - s.expenses)}</strong></div></div><p class="intro">City awards tracked: ${money(s.settlementGross)} · Lawyer fees: ${money(s.settlementFees)} · Net after all claim filing fees: ${money(s.settlementGross - s.settlementFees - s.claimFilingFees)}.<br>Taxpayer money spent: <b>${money(s.taxpayerCost)}</b> (awards plus city legal costs; not your personal net). Hospital bills tracked: ${money(s.hospitalBills)}. These counters start with this update for older saves.<br>Loan principal owed: ${money(s.campaign.loanDebt)}. Borrowing increases cash, not earnings.</p><div class="clip"><h3>Society improved: ${s.society}%</h3><p class="intro">${s.published} uploads. ${s.views.toLocaleString()} views. ${s.likes.toLocaleString()} likes. ${s.claims} civil claims. ${s.society === 0 ? 'No measurable public benefit.' : 'An increasing number of people miss the quiet.'}</p></div>${s.ledger.length ? s.ledger.map((l) => `<div class="ledger-row"><div>${esc(l.label)}<small>DAY ${l.day}</small></div><b class="${l.amount < 0 ? 'negative' : ''}">${l.amount > 0 ? '+' : ''}${money(l.amount)}</b></div>`).join('') : '<p class="intro">No transactions yet. These are the good old days.</p>'}`,
   );
 }
 function help() {
   openModal(
     'help',
     'Your guide to public disservice.',
-    `<p class="intro">A satirical open world about manufacturing outrage, then discovering the overhead. The only real victory is leaving the outrage career and becoming useful to other people.</p><div class="help-grid"><section><h3>01 / Find the story</h3><p>Use <kbd>WASD</kbd> or arrow keys to walk. Click a nearby patch of sidewalk to move there. Hold Shift to jog. Scroll or use + / − to zoom. Walk close to your smoking brown car and press <kbd>E</kbd> to drive. V toggles first-person on supported devices; drag to look or use Q/R and the turn buttons. Find mirror walks to a nearby mirror. Driving: W / ↑ accelerates, S / ↓ brakes then reverses, A/D or ←/→ steer, Shift brakes hard. Stop before exiting. Click-to-walk routes around buildings; driving uses the controls.</p></section><section><h3>02 / Make it about you</h3><p>Near a local, press <kbd>F</kbd> to film and <kbd>Space</kbd> to deliver your rotating legal catchphrases. Locals argue, leave, play music, throw stink bombs, or make contact. Press F to save the clip.</p></section><section><h3>03 / Edit. Upload. Regret.</h3><p>Open Editing desk. Keep the full context or remove your provocation for more clicks. Claimed audio earns nothing. Editing, data, crew and equipment all cost money. The ledger tells the truth.</p></section><section><h3>04 / Live with it</h3><p>After contact, demand charges against the civilian: “This person hit me! I’m the victim!” Officers review the encounter and may arrest the civilian. A later civil claim against the city is a separate choice. Outcomes vary. Once bought, mace fires automatically when a civilian shoves you or your camera. You can also use the Mace button. Each use consumes a charge; the spray, civilian reaction and your self-defense claim are recorded. Low health sends you to hospital for $65. Gear requires cash. Uploads earn variable ad revenue and likes; three new uploads and 150 new likes qualify you for a limited channel loan. Daily fees and interest still compound. Open Home, loans & career to manage retaliation, loans and your eventual career change. The report form is the one menu where the town keeps moving.</p></section></div><p class="modal-note">Progress autosaves in this browser. Use Settings to export a gameplay backup; download video takes separately from the editing desk. The game pauses in menus and background tabs, except for police statement forms: the suspect can leave while you write. This is a playable prototype with a compact town, not a finished large-scale game.</p><button class="primary" id="backTown">I have several questionable ideas →</button>`,
+    `<p class="intro">A satirical open world about manufacturing outrage, then discovering the overhead. The only real victory is leaving the outrage career and becoming useful to other people.</p><div class="help-grid"><section><h3>01 / Find the story</h3><p>Use <kbd>WASD</kbd> or arrow keys to walk. Click a nearby patch of sidewalk to move there. Hold Shift to jog. Scroll or use + / − to zoom. Walk close to your smoking brown car and press <kbd>E</kbd> to drive. V toggles first-person on supported devices; drag to look or use Q/R and the turn buttons. Find mirror walks to a nearby mirror. Driving: W / ↑ accelerates, S / ↓ brakes then reverses, A/D or ←/→ steer, Shift brakes hard. Stop before exiting. Click-to-walk routes around buildings; driving uses the controls.</p></section><section><h3>02 / Make it about you</h3><p>Near a local, press <kbd>F</kbd> to film and <kbd>Space</kbd> to deliver your rotating legal catchphrases. Locals argue, leave, play music, throw stink bombs, or make contact. An officer stands outside City Hall. Nearby officers expose Film & question and Ask for supervisor actions; G also requests a supervisor. Controller users can select Ask officer supervisor from the menu. Officer threats and force can support a recorded city complaint. Press F to save the clip.</p></section><section><h3>03 / Edit. Upload. Regret.</h3><p>Open Editing desk. Keep the full context or remove your provocation for more clicks. Claimed audio earns nothing. Editing, data, crew and equipment all cost money. The ledger tells the truth.</p></section><section><h3>04 / Live with it</h3><p>After contact, demand charges against the civilian: “This person hit me! I’m the victim!” Officers review the encounter and may arrest the civilian. A later civil claim against the city is a separate choice. Outcomes vary. Once bought, mace fires automatically when a civilian shoves you or your camera. You can also use the Mace button. Each use consumes a charge; the spray, civilian reaction and your self-defense claim are recorded. Low health sends you to hospital for $65. Gear requires cash. Uploads earn variable ad revenue and likes; three new uploads and 150 new likes qualify you for a limited channel loan. Daily fees and interest still compound. Open Home, loans & career to manage retaliation, loans and your eventual career change. The report form is the one menu where the town keeps moving.</p></section></div><p class="modal-note">Progress autosaves in this browser. Use Settings to export a gameplay backup; download video takes separately from the editing desk. The game pauses in menus and background tabs, except for police statement forms: the suspect can leave while you write. This is a playable prototype with a compact town, not a finished large-scale game.</p><button class="primary" id="backTown">I have several questionable ideas →</button>`,
   );
   $('backTown').onclick = closeModal;
 }
@@ -1250,7 +1477,7 @@ function settings() {
   openModal(
     'settings',
     'Keep the evidence.',
-    `<p class="intro">Progress is saved locally in this browser. Back up before clearing browser data or changing devices. JSON exports contain gameplay state; download recorded video takes separately in the editing desk. The world pauses in this menu. Police statement forms are different: suspects can keep moving while you write.</p><label class="weather-select">LANGUAGE <select id="languageChoice"><option value="clean">Profanity off</option><option value="explicit">Profanity on</option></select></label><p class="modal-note">Language only: mature satire, violence and bathroom themes remain. New captions follow this setting; existing video files cannot be changed. No login required. Saves stay in this browser and website address; export before moving devices or clearing storage.</p><button id="terms">Player agreement & reuse license</button><label class="weather-select">ATMOSPHERE <select id="weatherChoice"><option value="living">Living weather · changes gradually</option>${Object.entries(
+    `<p class="intro">Progress is saved locally in this browser. Back up before clearing browser data or changing devices. JSON exports contain gameplay state; download recorded video takes separately in the editing desk. The world pauses in this menu. Police statement forms are different: suspects can keep moving while you write.</p><label class="weather-select">CHARACTER <select id="genderChoice"><option value="male">Male</option><option value="female">Female</option></select></label><label class="weather-select">LANGUAGE <select id="languageChoice"><option value="clean">Profanity off</option><option value="explicit">Profanity on</option></select></label><p class="modal-note">Language only: mature satire, violence and bathroom themes remain. New captions follow this setting; existing video files cannot be changed. No login required. Saves stay in this browser and website address; export before moving devices or clearing storage.</p><button id="terms">Player agreement & reuse license</button><label class="weather-select">ATMOSPHERE <select id="weatherChoice"><option value="living">Living weather · changes gradually</option>${Object.entries(
       WEATHER,
     )
       .map(
@@ -1261,6 +1488,12 @@ function settings() {
         '',
       )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><label class="weather-select">RESOLUTION <select id="resolutionChoice"><option value="auto">Automatic · performance friendly</option><option value="native">Native display · up to 4K</option><option value="4k">4K UHD · 3840 × 2160 at 16:9</option></select></label><label class="weather-select">COLOR <select id="gamutChoice"><option value="auto">Automatic · Display P3 when supported</option><option value="srgb">sRGB · standard color</option><option value="p3">Display P3 · wide gamut</option></select></label><p class="modal-note" id="displayStatus"></p><p class="modal-note">4K costs more GPU power and preserves your screen’s shape. On smaller screens it supersamples; it does not add physical pixels. Display P3 requires a compatible screen and browser; otherwise sRGB is used. This is wide-gamut SDR, not HDR. Display changes apply when you resume.</p><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button><button id="ambientMusic">Background music: ${s.music === false ? 'off' : 'on'}</button></div><section class="clip"><h3>Spoken dialogue</h3><div class="setting-actions"><button id="enableVoices" ${characterSpeech.supported ? '' : 'disabled'}>${s.voices ? 'Voices: on' : 'Enable voices'}</button><button id="previewVoices" ${characterSpeech.supported ? '' : 'disabled'}>Preview character voices</button></div><label for="voiceVolume">Voice volume</label><input id="voiceVolume" type="range" min="0" max="1" step="0.05" value="${s.voiceVolume ?? 0.8}"><p class="modal-note">${characterSpeech.supported ? 'Uses your device’s available voices, assigned consistently per character. Voice quality varies by browser; some voices require internet. The speaker button mutes all audio. Captions stay on. Device speech is not included in downloaded footage.' : 'Speech is unavailable in this browser. Dialogue captions remain available.'}</p></section><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes birds, gusting wind, rain and occasional quiet music. Driving fades the outdoor mix down for the sputtering exhaust. Background music can be switched off separately. No accounts, trackers, real uploads, or purchases.</p>`,
   );
+  $('genderChoice').value = s.gender;
+  $('genderChoice').onchange = (e) => {
+    s.gender = e.target.value;
+    s.genderChosen = true;
+    save();
+  };
   $('languageChoice').value = s.profanity ? 'explicit' : 'clean';
   $('languageChoice').onchange = (e) => {
     s.profanity = e.target.value === 'explicit';
@@ -1421,7 +1654,10 @@ function settings() {
       save();
       closeModal();
       updateUI();
-      notify('Broke again. A blank slate.');
+      officerContact = null;
+      officerLines = [];
+      world.supervisor = null;
+      chooseCharacter();
     };
   };
 }
@@ -1623,6 +1859,16 @@ function paperwork() {
 }
 
 function updateUI() {
+  const officer = nearOfficer();
+  $('officerActions').classList.toggle(
+    'hidden',
+    !officer || s.driving || s.campaign.career !== 'auditor',
+  );
+  $('supervisorMenu').classList.toggle('hidden', !officer);
+  $('supervisorMenu').disabled = !!officerContact?.report.supervisorRequested;
+  $('askSupervisor').disabled = !!officerContact?.report.supervisorRequested;
+  $('questionOfficer').disabled =
+    officerLines.length > 0 || (officerContact?.id === officer?.id && officerContact?.rounds >= 4);
   $('soundToggle').setAttribute('aria-pressed', String(!muted));
   $('soundToggle').setAttribute('aria-label', muted ? 'Enable sound' : 'Mute sound');
   $('soundToggle').title = muted ? 'Enable sound' : 'Mute sound';
@@ -2063,6 +2309,7 @@ function move(dt) {
 }
 
 function simulate(dt) {
+  tickOfficerContact(dt);
   tickBanter();
   if (world.time > conversationUntil) $('conversation').classList.add('hidden');
   for (let i = pendingBarks.length - 1; i >= 0; i--) {
@@ -2235,6 +2482,12 @@ $('car').onclick = () => {
   car();
 };
 $('police').onclick = policeReport;
+$('questionOfficer').onclick = talkOfficer;
+$('askSupervisor').onclick = askSupervisor;
+$('supervisorMenu').onclick = () => {
+  $('gameMenu').close();
+  askSupervisor();
+};
 $('spray').onclick = () => {
   $('gameMenu').close();
   spray();
@@ -2313,6 +2566,7 @@ window.addEventListener('keydown', (e) => {
     keys.add(key);
   }
   if (e.repeat) return;
+  if (key === 'g') askSupervisor();
   if (key === 'v') toggleView();
   if (key === 'f') toggleFilm();
   if (key === 'e') car();
@@ -2408,6 +2662,7 @@ function frame(now) {
 world.render(s, npcs, 0);
 updateUI();
 requestAnimationFrame(frame);
+if (!s.genderChosen) chooseCharacter();
 if (loadWarning) notify(loadWarning);
 else if (!s.published && !s.clips.length)
   setTimeout(
@@ -2438,6 +2693,7 @@ window.auditorDebug = {
     mirrors: mirrorSites(s.mirrorSeed),
     merch: world.people?.get('auditor')?.merchKind,
     flies: !!world.people?.get('auditor')?.flies?.visible,
+    gender: world.people?.get('auditor')?.genderAppearance ?? s.gender,
     camera: world.camera?.position.toArray(),
   }),
   locals: () => npcs.map((n) => ({ id: n.id, x: n.x, z: n.z, moving: n.moving, flee: n.flee })),
@@ -2456,6 +2712,13 @@ window.auditorDebug = {
   get renderer() {
     return world.backend;
   },
+  officer: () => ({
+    contact: officerContact
+      ? { rounds: officerContact.rounds, report: structuredClone(officerContact.report) }
+      : null,
+    nearby: !!nearOfficer(),
+    supervisor: !!world.supervisor,
+  }),
   get recording() {
     return !!record;
   },

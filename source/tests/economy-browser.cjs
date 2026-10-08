@@ -37,6 +37,7 @@ const path = require('node:path');
     );
     await page.goto('http://127.0.0.1:' + server.address().port);
     await page.waitForFunction(() => window.auditorDebug);
+    if (await page.locator('#chooseMale').isVisible()) await page.click('#chooseMale');
     async function panel(selector) {
       await page.click('#menuToggle');
       await page.click(selector);

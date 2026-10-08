@@ -25,6 +25,7 @@ const fs = require('node:fs'),
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('http://127.0.0.1:' + server.address().port);
     await page.waitForFunction(() => window.auditorDebug);
+    if (await page.locator('#chooseMale').isVisible()) await page.click('#chooseMale');
     await page.click('#touchEngage');
     await page.waitForFunction(() => auditorDebug.conversation().lines.length >= 4);
     let lines = await page.evaluate(() => auditorDebug.conversation().lines);
@@ -63,6 +64,7 @@ const fs = require('node:fs'),
     await page.click('#saveNow');
     await page.reload();
     await page.waitForFunction(() => window.auditorDebug);
+    if (await page.locator('#chooseMale').isVisible()) await page.click('#chooseMale');
     assert.equal(
       await page.evaluate(() => auditorDebug.snapshot().conversationMemory['1']),
       remembered,
