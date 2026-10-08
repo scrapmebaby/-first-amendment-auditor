@@ -783,8 +783,8 @@ export class World {
     if (!c) return;
     let index = 0;
     for (const i of c.homeIncidents.filter((i) => !i.cleaned).slice(0, 8)) {
-      const x = -34 + (index % 4) * 5,
-        z = 81 + Math.floor(index / 4) * 3;
+      const x = i.type === 'porch' ? -25 + (index % 3) : -34 + (index % 4) * 5,
+        z = i.type === 'porch' ? 79 : 81 + Math.floor(index / 4) * 3;
       this.box(x, 0.05, z, 1.2, 0.35, 0.8, i.type === 'trash' ? '#c3baa0' : '#74583c');
       this.box(x, 0.4, z, 0.65, 0.3, 0.5, i.type === 'trash' ? '#9caa9a' : '#8a6947');
       index++;

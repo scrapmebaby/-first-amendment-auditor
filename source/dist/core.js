@@ -1,8 +1,17 @@
+import { accountCategory, validAccounts } from './economy.js';
 import { MERCH } from './appearance.js';
 export const VERSION = 1;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const money = (v) => `${v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`;
 export const ITEMS = [
+  {
+    id: 'doggieBags',
+    name: 'Doggie bags · pack of 5',
+    price: 6,
+    icon: '▱',
+    consumable: true,
+    desc: 'Five cleanup bags. One bag clears one yard or porch mess when you are home. Clean before HOA inspection.',
+  },
   {
     id: 'merchPress',
     name: 'Press for Views shirt',
@@ -83,6 +92,7 @@ export const ITEMS = [
   },
   {
     id: 'spray',
+    consumable: true,
     name: 'Pepper spray / mace',
     price: 20,
     icon: '▥',
@@ -100,6 +110,8 @@ export function fresh() {
     claimFilingFees: 0,
     taxpayerCost: 0,
     hospitalBills: 0,
+    cleanupBags: 0,
+    accounts: {},
     cash: 0,
     revenue: 0,
     expenses: 0,
@@ -137,6 +149,13 @@ export function fresh() {
     music: true,
     weather: 'living',
     campaign: {
+      exposure: 0,
+      relationshipStrain: 0,
+      fallout: [],
+      hoaNextInspection: 2160,
+      hoaStreak: 0,
+      hoaFines: 0,
+      lastLoanDay: 0,
       reputation: 0,
       condition: 100,
       stress: 0,
@@ -166,19 +185,22 @@ export function fresh() {
 }
 export function transaction(s, amount, label) {
   s.cash = Math.round((s.cash + amount) * 100) / 100;
-  if (amount > 0) s.revenue += amount;
-  else s.expenses -= amount;
-  s.ledger.unshift({ amount, label, day: s.day });
+  if (amount > 0) s.revenue = Math.round((s.revenue + amount) * 100) / 100;
+  else s.expenses = Math.round((s.expenses - amount) * 100) / 100;
+  const category = accountCategory(amount, label);
+  s.accounts ??= {};
+  s.accounts[category] = Math.round(((s.accounts[category] || 0) + Math.abs(amount)) * 100) / 100;
+  s.ledger.unshift({ amount, label, day: s.day, category });
   s.ledger = s.ledger.slice(0, 80);
 }
 export function buy(s, id) {
-  if (s.campaign?.career && s.campaign.career !== 'auditor')
+  if (s.campaign?.career && s.campaign.career !== 'auditor' && id !== 'doggieBags')
     return { ok: false, text: 'The outrage career is over. You no longer need this equipment.' };
   const item = ITEMS.find((i) => i.id === id);
   if (!item) return { ok: false, text: 'Unknown equipment.' };
   if (item.requires && !s.gear.includes(item.requires))
     return { ok: false, text: 'Hire your first crew member first.' };
-  if (s.gear.includes(id) && id !== 'spray') return { ok: false, text: 'Already owned.' };
+  if (s.gear.includes(id) && !item.consumable) return { ok: false, text: 'Already owned.' };
   if (s.cash < item.price)
     return {
       ok: false,
@@ -188,6 +210,7 @@ export function buy(s, id) {
   if (!s.gear.includes(id)) s.gear.push(id);
   if (MERCH[id]) s.merch = id;
   if (id === 'spray') s.spray += 3;
+  if (id === 'doggieBags') s.cleanupBags += 5;
   if (id === 'clown' || id === 'poop') s.mask = id;
   return { ok: true, text: `${item.name} acquired. Financial wisdom not included.` };
 }
@@ -204,12 +227,27 @@ export function estimate(s, c, cut) {
   mult *= 0.35 + (0.65 * (s.campaign?.condition ?? 100)) / 100;
   // Saved per take: reopening the editor or changing the title never rerolls reach.
   const audience = c.audience ?? (c.id * 0.61803398875) % 1;
-  const reach = audience < 0.15 ? 0.45 : audience < 0.8 ? 0.9 + audience : 2.5 + audience;
+  const tier =
+    audience < 0.45
+      ? 'Quiet upload'
+      : audience < 0.8
+        ? 'Steady performer'
+        : audience < 0.95
+          ? 'Breakout'
+          : 'Viral hit';
+  const reach =
+    audience < 0.45
+      ? 0.4 + audience
+      : audience < 0.8
+        ? 1 + (audience - 0.45) / 0.35
+        : audience < 0.95
+          ? 3 + ((audience - 0.8) / 0.15) * 5
+          : 12 + ((audience - 0.95) / 0.05) * 18;
   const views = Math.round(
     (Math.min(c.seconds, 90) * 45 + c.drama * 180 + 80) * mult * (cut ? 2.1 : 1) * reach,
   );
   const likes = Math.floor(views * (0.012 + audience * 0.028));
-  const rpm = 4.5 + audience * 6;
+  const rpm = 4.5 + (((c.id || 1) * 0.381966 + audience * 0.754877) % 1) * 6;
   const income = c.music || s.campaign?.demonetized ? 0 : Math.round((views * rpm) / 10) / 100;
   let cost = 3.5 + (cut ? 4.5 : 1);
   for (const [g, v] of [
@@ -220,7 +258,7 @@ export function estimate(s, c, cut) {
     ['crew2', 18],
   ])
     if (s.gear.includes(g)) cost += v;
-  return { views, likes, rpm, income, cost, net: Math.round((income - cost) * 100) / 100 };
+  return { tier, views, likes, rpm, income, cost, net: Math.round((income - cost) * 100) / 100 };
 }
 export function publish(s, id, cut, title) {
   const c = s.clips.find((x) => x.id === id);
@@ -295,6 +333,12 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (
+    o?.cleanupBags !== undefined &&
+    (!Number.isInteger(o.cleanupBags) || o.cleanupBags < 0 || o.cleanupBags > 1e6)
+  )
+    return false;
+  if (o?.accounts !== undefined && !validAccounts(o.accounts)) return false;
   if (o?.officerHistory !== undefined) {
     const h = o.officerHistory;
     if (
@@ -502,6 +546,7 @@ export function migrateSave(o) {
   return {
     ...base,
     ...o,
+    accounts: o.accounts ?? { priorIncome: o.revenue, priorExpenses: o.expenses },
     genderChosen: o.genderChosen ?? true,
     mirrorSeed: o.mirrorSeed ?? 1977,
     moving: false,
@@ -511,6 +556,11 @@ export function migrateSave(o) {
     campaign: {
       ...base.campaign,
       ...o.campaign,
+      exposure:
+        o.campaign?.exposure ?? Math.min(100, Math.max(0, o.views) / 2500 + (o.likes || 0) / 800),
+      lastLoanDay: o.campaign?.lastLoanDay ?? (o.campaign?.loansTaken ? o.day : 0),
+      hoaNextInspection:
+        o.campaign?.hoaNextInspection ?? (Math.floor((o.day * 1440 + o.minutes) / 180) + 1) * 180,
       lastLoanUpload: o.campaign?.lastLoanUpload ?? (o.campaign?.loansTaken ? o.published : 0),
       lastLoanLikes: o.campaign?.lastLoanLikes ?? (o.campaign?.loansTaken ? (o.likes ?? 0) : 0),
       reputation: o.campaign?.reputation ?? Math.min(89, o.published * 8),
@@ -520,8 +570,34 @@ export function migrateSave(o) {
 export function validCampaign(c) {
   if (c === undefined) return true;
   if (!c || typeof c !== 'object') return false;
-  for (const key of ['lastLoanUpload', 'lastLoanLikes'])
+  for (const key of [
+    'lastLoanUpload',
+    'lastLoanLikes',
+    'lastLoanDay',
+    'hoaNextInspection',
+    'hoaStreak',
+    'hoaFines',
+  ])
     if (c[key] !== undefined && (!Number.isSafeInteger(c[key]) || c[key] < 0)) return false;
+  for (const key of ['exposure', 'relationshipStrain'])
+    if (c[key] !== undefined && (!Number.isFinite(c[key]) || c[key] < 0 || c[key] > 100))
+      return false;
+  if (
+    c.fallout !== undefined &&
+    (!Array.isArray(c.fallout) ||
+      c.fallout.length > 12 ||
+      !c.fallout.every(
+        (e) =>
+          Number.isFinite(e.day) &&
+          ['friends', 'family'].includes(e.type) &&
+          typeof e.text === 'string' &&
+          e.text.length < 1000 &&
+          Number.isFinite(e.cost) &&
+          e.cost >= 0 &&
+          e.cost <= 1000,
+      ))
+  )
+    return false;
   const nums = {
     reputation: [0, 100],
     condition: [0, 100],
@@ -552,7 +628,7 @@ export function validCampaign(c) {
         Number.isInteger(i.id) &&
         Number.isFinite(i.day) &&
         Number.isFinite(i.clock) &&
-        ['lawn', 'trash'].includes(i.type) &&
+        ['lawn', 'porch', 'trash'].includes(i.type) &&
         ['masked', 'recorded', 'identified', 'cleaned', 'reported'].every(
           (k) => typeof i[k] === 'boolean',
         ),

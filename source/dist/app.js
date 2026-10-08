@@ -4,6 +4,7 @@ import {
   beginOfficerContact,
   rememberOfficerRound,
 } from './police-contact.js';
+import { ACCOUNT_LABELS, INCOME_ACCOUNTS } from './economy.js';
 import { CharacterSpeech } from './voices.js';
 import { Banter } from './banter.js';
 import { TouchInput } from './touch-input.js';
@@ -45,6 +46,10 @@ import {
   damageEquipment,
   repairEquipment,
   homeIncident,
+  discoveryRisk,
+  ambientBacklash,
+  hoaStatus,
+  checkHOA,
   cleanLawn,
   reportHome,
   startService,
@@ -1373,7 +1378,7 @@ function editor() {
         e = estimate(s, c, cut);
       $(`timeline-${c.id}`).classList.toggle('cut', cut);
       $(`estimate-${c.id}`).textContent =
-        `Forecast: ${e.views.toLocaleString()} views · ${e.likes.toLocaleString()} likes · Ad revenue ${money(e.income)} · Expenses ${money(e.cost)} · Net ${money(e.net)}${s.campaign.demonetized ? ' · CHANNEL DEMONETIZED: no ad income.' : c.music ? ' · Entire take claimed: no ad income.' : ''}`;
+        `${e.tier} · Forecast: ${e.views.toLocaleString()} views · ${e.likes.toLocaleString()} likes · Ad revenue ${money(e.income)} · Expenses ${money(e.cost)} · Net ${money(e.net)} · ${s.campaign.homeKnown ? 'Home identity exposed; popular uploads increase backlash risk' : `${Math.round(discoveryRisk(s, e) * 100)}% chance of home identity being discovered`}${s.campaign.demonetized ? ' · CHANNEL DEMONETIZED: no ad income.' : c.music ? ' · Entire take claimed: no ad income.' : ''}`;
     };
     refresh();
     $(`cut-${c.id}`).onchange = refresh;
@@ -1385,8 +1390,8 @@ function editor() {
         notify('Your outrage channel is closed.');
         return;
       }
-      const notices = afterUpload(s, c, cut);
-      if (s.campaign.homeIncidents[0] && notices.some((n) => n.includes('lawn')))
+      const notices = afterUpload(s, c, cut, e);
+      if (s.campaign.homeIncidents[0] && notices.some((n) => /doggie bag/i.test(n)))
         world.homeIntruder = {
           x: -30,
           z: 83,
@@ -1413,9 +1418,9 @@ function shop() {
   openModal(
     'shop',
     'Look the part. Pay the price.',
-    `<p class="intro">Available: <b>${money(s.cash)}</b>. Purchases require cash. Fees can overdraw your account; negative balances accrue 2% daily interest. Channel loans require uploads and likes.</p><div class="clip"><h3>Camera condition: ${s.campaign.condition}%</h3><p class="intro">A smashed camera cannot record. Damaged equipment lowers usable reach.</p><button id="repairGear">Repair equipment · ${money(Math.round((100 - s.campaign.condition) * 0.55) + 10)}</button></div><div class="shop-grid">${ITEMS.map(
+    `<p class="intro">Available: <b>${money(s.cash)}</b>. Purchases require cash. Fees can overdraw your account; negative balances accrue 2% daily interest. Channel loans require uploads, likes and a three-day cooldown.</p><div class="clip"><h3>Camera condition: ${s.campaign.condition}%</h3><p class="intro">A smashed camera cannot record. Damaged equipment lowers usable reach.</p><button id="repairGear">Repair equipment · ${money(Math.round((100 - s.campaign.condition) * 0.55) + 10)}</button></div><div class="shop-grid">${ITEMS.map(
       (i) => {
-        const owned = s.gear.includes(i.id) && i.id !== 'spray';
+        const owned = s.gear.includes(i.id) && !i.consumable;
         const unavailable = s.cash < i.price || (i.requires && !s.gear.includes(i.requires));
         return `<article class="shop-card"><span class="item-icon">${i.icon}</span><span class="eyebrow">${i.id.startsWith('crew') ? 'PERSONNEL' : i.id === 'clown' || i.id === 'poop' || MERCH[i.id] ? 'WARDROBE' : 'EQUIPMENT'}</span><h3>${i.name}</h3><p>${i.desc}</p><button data-buy="${i.id}" ${owned ? 'disabled class="owned"' : unavailable ? 'disabled' : ''}><span>${owned ? (s.mask === i.id || s.merch === i.id ? 'Equipped' : 'Owned') : unavailable ? (i.requires && !s.gear.includes(i.requires) ? 'Hire first crew' : 'Need cash') : i.id === 'spray' && s.spray ? 'Refill' : 'Acquire'}</span><b>${owned ? '✓' : money(i.price)}</b></button>${owned && ['clown', 'poop'].includes(i.id) ? `<button data-mask="${i.id}" style="margin-top:6px">${s.mask === i.id ? 'Remove mask' : 'Wear mask'}</button>` : ''}${owned && MERCH[i.id] ? `<button data-merch="${i.id}" style="margin-top:6px">${s.merch === i.id ? 'Wear original shirt' : 'Wear shirt'}</button>` : ''}</article>`;
       },
@@ -1459,10 +1464,18 @@ function shop() {
   );
 }
 function ledger() {
+  const breakdown = (income) =>
+    Object.entries(s.accounts)
+      .filter(([key, value]) => value > 0 && INCOME_ACCOUNTS.includes(key) === income)
+      .map(
+        ([key, value]) =>
+          `<div class="ledger-row"><span>${ACCOUNT_LABELS[key]}</span><b>${money(value)}</b></div>`,
+      )
+      .join('') || '<p>No entries yet.</p>';
   openModal(
     'ledger',
     'The cost of doing “good.”',
-    `<p class="intro">The numbers are unedited. That’s the problem.</p><div class="ledger-totals"><div><small>REVENUE</small><strong>${money(s.revenue)}</strong></div><div><small>EXPENSES</small><strong>${money(s.expenses)}</strong></div><div><small>NET PROFIT</small><strong class="${s.revenue < s.expenses ? 'negative' : ''}">${money(s.revenue - s.expenses)}</strong></div></div><p class="intro">City awards tracked: ${money(s.settlementGross)} · Lawyer fees: ${money(s.settlementFees)} · Net after all claim filing fees: ${money(s.settlementGross - s.settlementFees - s.claimFilingFees)}.<br>Taxpayer money spent: <b>${money(s.taxpayerCost)}</b> (awards plus city legal costs; not your personal net). Hospital bills tracked: ${money(s.hospitalBills)}. These counters start with this update for older saves.<br>Loan principal owed: ${money(s.campaign.loanDebt)}. Borrowing increases cash, not earnings.</p><div class="clip"><h3>Society improved: ${s.society}%</h3><p class="intro">${s.published} uploads. ${s.views.toLocaleString()} views. ${s.likes.toLocaleString()} likes. ${s.claims} civil claims. ${s.society === 0 ? 'No measurable public benefit.' : 'An increasing number of people miss the quiet.'}</p></div>${s.ledger.length ? s.ledger.map((l) => `<div class="ledger-row"><div>${esc(l.label)}<small>DAY ${l.day}</small></div><b class="${l.amount < 0 ? 'negative' : ''}">${l.amount > 0 ? '+' : ''}${money(l.amount)}</b></div>`).join('') : '<p class="intro">No transactions yet. These are the good old days.</p>'}`,
+    `<p class="intro">The numbers are unedited. That’s the problem.</p><div class="ledger-totals"><div><small>REVENUE</small><strong>${money(s.revenue)}</strong></div><div><small>EXPENSES</small><strong>${money(s.expenses)}</strong></div><div><small>NET PROFIT</small><strong class="${s.revenue < s.expenses ? 'negative' : ''}">${money(s.revenue - s.expenses)}</strong></div></div><section class="clip"><h3>Income by source</h3>${breakdown(true)}<h3>Costs by category</h3>${breakdown(false)}</section><p class="intro">Cash after loan principal owed: ${money(s.cash - s.campaign.loanDebt)}. Borrowing and principal repayment stay outside profit.<br>City awards tracked: ${money(s.settlementGross)} · Lawyer fees: ${money(s.settlementFees)} · Net after all claim filing fees: ${money(s.settlementGross - s.settlementFees - s.claimFilingFees)}.<br>Taxpayer money spent: <b>${money(s.taxpayerCost)}</b> (awards plus city legal costs; not your personal net). Hospital bills tracked: ${money(s.hospitalBills)}. These counters start with this update for older saves.<br>Loan principal owed: ${money(s.campaign.loanDebt)}. Borrowing increases cash, not earnings.</p><div class="clip"><h3>Society improved: ${s.society}%</h3><p class="intro">${s.published} uploads. ${s.views.toLocaleString()} views. ${s.likes.toLocaleString()} likes. ${s.claims} civil claims. ${s.society === 0 ? 'No measurable public benefit.' : 'An increasing number of people miss the quiet.'}</p></div>${s.ledger.length ? s.ledger.map((l) => `<div class="ledger-row"><div>${esc(l.label)}<small>DAY ${l.day}</small></div><b class="${l.amount < 0 ? 'negative' : ''}">${l.amount > 0 ? '+' : ''}${money(l.amount)}</b></div>`).join('') : '<p class="intro">No transactions yet. These are the good old days.</p>'}`,
   );
 }
 function help() {
@@ -1673,7 +1686,7 @@ function notes() {
   openModal(
     'notes',
     'Field notes & creative direction.',
-    `<div class="notes"><p>This independent game satirizes a fictional outrage entrepreneur. Little Liberty, its residents, outcomes and economics are invented. It is not affiliated with YouTube or Disney.</p><h3>A town built around ordinary lives</h3><p>City hall: civil servants and paperwork. Library: readers protecting a quiet afternoon. Post office: people with somewhere to be. Café: workers and customers. Courthouse: bills, not guaranteed vindication. Hospital: the cost of escalation. Everyone has a day that does not need to become content.</p><h3>Real-world reference points</h3><p>The <a href="https://www.oif.ala.org/auditing-the-first-amendment-at-your-public-library/" target="_blank" rel="noopener">American Library Association’s library guidance</a> informed the library setting and staff responses. <a href="https://mrsc.org/stay-informed/mrsc-insight/april-2023/rights-and-limits-on-filming-in-public-facilities" target="_blank" rel="noopener">MRSC’s discussion of public-facility filming</a> informed the civic spaces. These sources also distinguish lawful recording from disruptive behavior.</p><p><a href="https://www.yorku.ca/osgoode/iposgoode/2022/02/23/filling-blank-space-policeman-obscures-accountability-with-taylor-swift/" target="_blank" rel="noopener">York University’s account of music used to disrupt recordings</a> inspired the fictional “royalty-trap playlist.” No commercial music or Disney material is included. Music claims here are simplified game mechanics, not predictions of a platform’s actual decisions.</p><h3>The joke is the business model</h3><p>Cheap engagement generates tiny ad payments. Gear adds overhead. Crew wants wages. Claims can fail. Context-free uploads harm the town’s social meter. Recording itself is not portrayed as automatically unlawful; the player’s escalation is what creates the mess.</p><h3>Prototype scope</h3><p>Original procedural art, a compact explorable town, walking and driving, varied NPC reactions, gear and two masks, two crew hires, editing, simulated police/claims, financial history, and portable saves. Local recordings capture only the generated game scene. No webcam, microphone, real-world footage, or online publishing. The campaign follows reputation, home retaliation, increasingly expensive loans, demonetization and a service-work ending. Giving up auditing is winning. Future expansions could add interiors, more masks and a larger town.</p></div>`,
+    `<div class="notes"><p>This independent game satirizes a fictional outrage entrepreneur. Little Liberty, its residents, outcomes and economics are invented. It is not affiliated with YouTube or Disney.</p><h3>A town built around ordinary lives</h3><p>City hall: civil servants and paperwork. Library: readers protecting a quiet afternoon. Post office: people with somewhere to be. Café: workers and customers. Courthouse: bills, not guaranteed vindication. Hospital: the cost of escalation. Everyone has a day that does not need to become content.</p><h3>Real-world reference points</h3><p>The <a href="https://www.oif.ala.org/auditing-the-first-amendment-at-your-public-library/" target="_blank" rel="noopener">American Library Association’s library guidance</a> informed the library setting and staff responses. <a href="https://mrsc.org/stay-informed/mrsc-insight/april-2023/rights-and-limits-on-filming-in-public-facilities" target="_blank" rel="noopener">MRSC’s discussion of public-facility filming</a> informed the civic spaces. These sources also distinguish lawful recording from disruptive behavior.</p><p><a href="https://www.yorku.ca/osgoode/iposgoode/2022/02/23/filling-blank-space-policeman-obscures-accountability-with-taylor-swift/" target="_blank" rel="noopener">York University’s account of music used to disrupt recordings</a> inspired the fictional “royalty-trap playlist.” No commercial music or Disney material is included. Music claims here are simplified game mechanics, not predictions of a platform’s actual decisions.</p><h3>The joke is the business model</h3><p>Ordinary uploads earn modest payments; rare viral hits can pay much more. Views and likes also increase discovery and backlash risks. Gear adds overhead. Crew wants wages. Claims can fail. Context-free uploads harm the town’s social meter. Recording itself is not portrayed as automatically unlawful; the player’s escalation is what creates the mess.</p><h3>Prototype scope</h3><p>Original procedural art, a compact explorable town, walking and driving, varied NPC reactions, gear and two masks, two crew hires, editing, simulated police/claims, financial history, and portable saves. Local recordings capture only the generated game scene. No webcam, microphone, real-world footage, or online publishing. The campaign follows reputation, home retaliation, increasingly expensive loans, demonetization and a service-work ending. Giving up auditing is winning. Future expansions could add interiors, more masks and a larger town.</p></div>`,
   );
 }
 function showCampaignNotice(text) {
@@ -1690,20 +1703,28 @@ function campaignMenu() {
   const c = s.campaign,
     ch = chapter(s),
     offer = loanOffer(s),
+    yard = hoaStatus(s),
     task = c.serviceTask,
     job = SERVICE_JOBS.find((j) => j.id === task?.jobId);
   openModal(
     'campaign',
     ch.title,
     `<p class="intro">${ch.sub} Giving up the outrage career is the way to win.</p><div class="ledger-totals"><div><small>REPUTATION</small><strong>${Math.round(c.reputation)} / 100</strong></div><div><small>LOAN PRINCIPAL</small><strong class="negative">${money(c.loanDebt)}</strong></div><div><small>STRESS</small><strong>${c.stress}%</strong></div></div><div class="chapter-track">${['Attention', 'Reputation', 'Retaliation', 'Demonetized', 'Service', 'Peace'].map((name, i) => `<span class="${i + 1 <= ch.number ? 'reached' : ''}">${i + 1}. ${name}</span>`).join('')}</div>
-<section class="clip"><h3>Home sweet publicly-known home.</h3><p class="intro">${c.homeKnown ? 'People know where you live. Visitors foul the lawn, throw trash, and disappear. Once a camera catches them, later visitors cover their faces.' : 'Your address is still private. Reputation 25 exposes your home to the town.'}</p><div class="setting-actions"><button id="goHome">Mark home on map</button><button id="securityShop">Buy home cameras</button><button id="cleanHome">Clean lawn · $12 / incident</button></div>${c.homeIncidents
+<section class="clip"><h3>Home sweet publicly-known home.</h3><p class="intro">${c.homeKnown ? 'Your home identity is exposed. Visitors can foul the lawn or porch and dump trash. Popular uploads increase the risk. Once a camera catches them, later visitors cover their faces.' : 'Your home is still private. Every upload carries a discovery chance based on actual views, likes and accumulated exposure.'}</p><p class="intro">Public exposure: ${Math.round(c.exposure)} / 100 · Friends/family strain: ${c.relationshipStrain} / 100.<br>${yard.dirty} messes, ${yard.overdue} overdue · ${s.cleanupBags} doggie bags. HOA inspection in ${Math.ceil(yard.nextIn)} game minutes. Two game hours to clean each mess; inspections every three hours. Neglect fines start at $25 and cap at $100 per inspection. Total fines: ${money(c.hoaFines)}.</p><div class="setting-actions"><button id="goHome">Mark home on map</button><button id="securityShop">Buy home cameras</button><button id="buyBags" ${s.cash < 6 ? 'disabled' : ''}>Buy 5 doggie bags · $6</button><button id="cleanHome" ${!yard.dirty || !s.cleanupBags || s.driving || Math.hypot(s.x + 25, s.z - 83) > 12 ? 'disabled' : ''}>Pick up one mess · 1 bag</button><small>Walk onto your home lot to clean. Mark home above for directions.</small></div>${c.homeIncidents
       .slice(0, 5)
       .map(
         (i) =>
-          `<div class="home-incident"><div><b>Day ${i.day} · ${i.type === 'lawn' ? 'Lawn fouled' : 'Trash dumped'}</b><small>${i.recorded ? (i.masked ? 'CCTV: masked visitor · identity obscured' : 'CCTV: face visible · identifiable visitor') : 'No camera installed · no recording'} · ${i.cleaned ? 'cleaned' : 'cleanup pending'}</small></div><button data-evidence="${i.id}">${i.recorded ? 'Review CCTV' : 'Incident details'}</button><button data-home-report="${i.id}" ${i.reported ? 'disabled' : ''}>${i.reported ? 'On file' : 'Report · $5'}</button></div>`,
+          `<div class="home-incident"><div><b>Day ${i.day} · ${i.type === 'lawn' ? 'Lawn fouled' : i.type === 'porch' ? 'Porch fouled' : 'Trash dumped'}</b><small>${i.recorded ? (i.masked ? 'CCTV: masked visitor · identity obscured' : 'CCTV: face visible · identifiable visitor') : 'No camera installed · no recording'} · ${i.cleaned ? 'cleaned' : 'cleanup pending'}</small></div><button data-evidence="${i.id}">${i.recorded ? 'Review CCTV' : 'Incident details'}</button><button data-home-report="${i.id}" ${i.reported ? 'disabled' : ''}>${i.reported ? 'On file' : 'Report · $5'}</button></div>`,
       )
-      .join('')}</section>
-<section class="clip"><h3>Borrow tomorrow. Owe more tomorrow.</h3><p class="intro">${c.loansTaken} loans taken. Current daily rate: ${(c.loanRate * 100).toFixed(0)}%. Borrowed principal is not profit. Credit ceiling: ${money(offer.limit)}; maximum $100 per loan and $300 total outstanding. ${s.published - (c.lastLoanUpload ?? 0)}/3 new uploads · ${(s.likes ?? 0) - (c.lastLoanLikes ?? 0)}/150 new likes. ${offer.reason} Each new loan reprices all remaining loan debt; interest is charged at midnight.</p>${c.career === 'auditor' ? `<button class="primary" id="takeLoan" ${offer.eligible ? '' : 'disabled'}>Borrow ${money(offer.principal)} · $${offer.fee} fee · ${(offer.rate * 100).toFixed(0)}% daily on ALL loan debt</button>` : '<p class="intro">Hardship plan: new loans closed, loan interest frozen. A quarter of each shift’s wages pays down existing principal.</p>'}<button id="repayLoan" style="margin-top:8px">Repay up to $50 principal</button></section>
+      .join('')}</section><section class="clip"><h3>The people around you</h3>${
+      c.fallout.length
+        ? c.fallout
+            .slice(0, 4)
+            .map((f) => `<p class="intro">Day ${f.day}: ${esc(f.text)}</p>`)
+            .join('')
+        : '<p class="intro">No friends or family fallout recorded yet. Higher exposure puts them at risk too.</p>'
+    }</section>
+<section class="clip"><h3>Borrow tomorrow. Owe more tomorrow.</h3><p class="intro">${c.loansTaken} loans taken. Current daily rate: ${(c.loanRate * 100).toFixed(0)}%. Borrowed principal is not profit. Credit ceiling: ${money(offer.limit)}; maximum $100 per loan and $250 total outstanding. Four loans per career; three game days between advances. New loans start at 8% daily interest and rise by 2 percentage points each time. ${s.published - (c.lastLoanUpload ?? 0)}/3 new uploads · ${(s.likes ?? 0) - (c.lastLoanLikes ?? 0)}/150 new likes. ${offer.reason} Each new loan reprices all remaining loan debt; interest is charged at midnight.</p>${c.career === 'auditor' ? `<button class="primary" id="takeLoan" ${offer.eligible ? '' : 'disabled'}>Borrow ${money(offer.principal)} · $${offer.fee} fee · ${(offer.rate * 100).toFixed(0)}% daily on ALL loan debt</button>` : '<p class="intro">Hardship plan: new loans closed, loan interest frozen. A quarter of each shift’s wages pays down existing principal.</p>'}<button id="repayLoan" style="margin-top:8px">Repay up to $50 principal</button></section>
 <section class="clip"><h3>${c.career === 'won' ? 'No audience. No act. A life.' : c.demonetized ? 'Your next career doesn’t need a thumbnail.' : 'The exit is at the bottom of the spiral.'}</h3><p class="intro">${c.career === 'won' ? 'You completed three honest shifts and chose to stop. Debt and history remain, but neither gets to define the ending.' : c.career === 'service' ? `${c.shifts}/3 shifts complete. Walk to a workplace, clock in, and use Space or the on-screen action to finish useful tasks.` : c.demonetized ? 'The simulated platform has permanently disabled ad revenue for this channel. More outrage now earns exactly $0. You can keep chasing it—or take a job helping the people you used to bother.' : `Platform review follows repeated confrontational uploads. ${s.published}/20 uploads (review can end monetization after 12 at reputation 90); ${c.strikes}/8 serious edited-content strikes. A warning arrives before the channel loses ad revenue.`}</p>${c.career === 'auditor' && c.demonetized ? '<button class="primary" id="leaveCareer">Give up auditing. Take an honest job.</button>' : ''}${c.career === 'service' ? `<div class="service-jobs">${SERVICE_JOBS.map((j) => `<article><b>${j.name}</b><small>${j.place} · ${money(j.wage)} / shift</small><button data-route-job="${j.id}">Mark workplace</button><button data-start-job="${j.id}" ${task ? 'disabled' : ''}>Clock in here</button></article>`).join('')}</div>${job ? `<p class="intro">Current shift: ${job.name} · Task ${task.step + 1}/3: ${job.tasks[task.step]}</p><button id="workTask" class="primary">Do the next useful thing</button>` : ''}${c.shifts >= 3 ? '<button id="finishCareer" class="primary ending-button">Put the camera away for good →</button>' : ''}` : ''}</section><div class="campaign-notices">${c.notices
       .slice(0, 7)
       .map((n) => `<p><small>DAY ${n.day}</small> ${esc(n.text)}</p>`)
@@ -1716,6 +1737,13 @@ function campaignMenu() {
     notify('Home marked on the minimap. The streets lead around buildings.');
   };
   $('securityShop').onclick = shop;
+  $('buyBags').onclick = () => {
+    const r = buy(s, 'doggieBags');
+    save();
+    updateUI();
+    campaignMenu();
+    notify(r.text);
+  };
   $('cleanHome').onclick = () => {
     const r = cleanLawn(s);
     save();
@@ -1867,6 +1895,14 @@ function updateUI() {
   $('supervisorMenu').classList.toggle('hidden', !officer);
   $('supervisorMenu').disabled = !!officerContact?.report.supervisorRequested;
   $('askSupervisor').disabled = !!officerContact?.report.supervisorRequested;
+  const dirtyYard = s.campaign.homeIncidents.some((i) => !i.cleaned);
+  $('yardActions').classList.toggle(
+    'hidden',
+    s.driving || Math.hypot(s.x + 25, s.z - 83) > 12 || !dirtyYard,
+  );
+  $('quickClean').textContent = s.cleanupBags
+    ? `Pick up mess · ${s.cleanupBags} bags`
+    : 'Get doggie bags';
   $('questionOfficer').disabled =
     officerLines.length > 0 || (officerContact?.id === officer?.id && officerContact?.rounds >= 4);
   $('soundToggle').setAttribute('aria-pressed', String(!muted));
@@ -2350,10 +2386,9 @@ function simulate(dt) {
     notify('A new day. The lender remembered.');
     save();
   }
-  if (s.campaign.homeKnown && s.campaign.career === 'auditor') {
-    s.campaign.homeClock += dt;
-    if (s.campaign.homeClock >= 110) handleHomeIncident(homeIncident(s));
-  }
+  handleHomeIncident(ambientBacklash(s, dt));
+  const hoaNotice = checkHOA(s);
+  if (hoaNotice) showCampaignNotice(hoaNotice);
   for (const n of npcs) {
     n.cooldown = Math.max(0, n.cooldown - dt);
     n.moving = false;
@@ -2484,6 +2519,16 @@ $('car').onclick = () => {
 $('police').onclick = policeReport;
 $('questionOfficer').onclick = talkOfficer;
 $('askSupervisor').onclick = askSupervisor;
+$('quickClean').onclick = () => {
+  if (!s.cleanupBags) {
+    campaignMenu();
+    return;
+  }
+  const result = cleanLawn(s);
+  save();
+  updateUI();
+  notify(result.text);
+};
 $('supervisorMenu').onclick = () => {
   $('gameMenu').close();
   askSupervisor();

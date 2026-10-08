@@ -46,7 +46,7 @@ test('loans require new uploads and likes, cap exposure, and never count as reve
   assert.equal(takeLoan(s).ok, false);
   s.likes = 150;
   assert.equal(takeLoan(s).ok, true);
-  assert.equal(s.cash, 45);
+  assert.equal(s.cash, 42);
   assert.equal(s.revenue, 0);
   assert.equal(s.campaign.loanDebt, 50);
   const snapshot = JSON.stringify(s);
@@ -55,20 +55,24 @@ test('loans require new uploads and likes, cap exposure, and never count as reve
   s.published += 3;
   assert.equal(takeLoan(s).ok, false);
   s.likes += 150;
+  assert.equal(takeLoan(s).ok, false);
+  s.day += 3;
   assert.equal(takeLoan(s).ok, true);
-  assert.equal(s.campaign.loanRate, 0.05);
+  assert.equal(s.campaign.loanRate, 0.1);
   assert.equal(s.campaign.loanDebt, 110);
   const before = s.expenses;
   chargeDay(s);
-  assert.equal(s.expenses - before, 13.5);
+  assert.equal(s.expenses - before, 19);
   repayLoan(s);
   assert.ok(Math.abs(s.cash - s.campaign.loanDebt - (s.revenue - s.expenses)) < 0.001);
   for (let i = 0; i < 10; i++) {
     s.published += 3;
     s.likes += 1000;
+    s.day += 3;
     takeLoan(s);
   }
-  assert.ok(s.campaign.loanDebt <= 300);
+  assert.ok(s.campaign.loanDebt <= 250);
+  assert.ok(s.campaign.loansTaken <= 4);
   s.campaign.demonetized = true;
   assert.equal(takeLoan(s).ok, false);
 });
@@ -89,11 +93,12 @@ test('legacy saves retain debt without inventing audience credit', () => {
   loaded.campaign.lastLoanLikes = -1;
   assert.equal(validSave(loaded), false);
 });
-test('reputation exposes home, cameras capture identity, later masks defeat identification', () => {
+test('reputation alone does not expose home; cameras and masking still work', () => {
   const s = fresh();
   s.campaign.reputation = 26;
   progressCareer(s);
-  assert.equal(s.campaign.homeKnown, true);
+  assert.equal(s.campaign.homeKnown, false);
+  s.campaign.homeKnown = true;
   let i = homeIncident(s);
   assert.equal(i.recorded, false);
   s.cash = 100;
@@ -106,7 +111,11 @@ test('reputation exposes home, cameras capture identity, later masks defeat iden
   assert.equal(i.identified, false);
   assert.equal(reportHome(s, i.id).ok, true);
   assert.equal(reportHome(s, i.id).ok, false);
-  cleanLawn(s);
+  s.cash = 100;
+  buy(s, 'doggieBags');
+  s.x = -25;
+  s.z = 83;
+  while (s.campaign.homeIncidents.some((i) => !i.cleaned)) assert.equal(cleanLawn(s).ok, true);
   assert.ok(s.campaign.homeIncidents.every((i) => i.cleaned));
   assert.equal(validSave(s), true);
 });

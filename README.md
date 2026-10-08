@@ -121,3 +121,28 @@ Officer Vale stands outside City Hall. Near an officer, use Film & question offi
 Video ad rates increase by 50% at unchanged reach. Recorded officer threats have a 45% settlement chance for $300–$899; recorded excessive force has a 70% chance for $600–$1,799. Weaker contact claims have a 20% chance for $150–$399. Claim filing costs $12 and lawyers take 30% of awards. Each filed case adds a fictional $75 city legal cost; awards add to that taxpayer total. Result screens show gross award, legal fee, filing fee, net gain and taxpayer cost. The ledger tracks awards, fees, taxpayer expense and hospital bills. New totals start with this version for old saves. Purchases still require cash and existing loan caps remain.
 
 Validation: full unit suite, syntax checks, standalone build; mobile browser economy/banter/voice checks; and an end-to-end officer flow in Canvas compatibility mode and WebGL rendering, including female selection and save, recorded threat, supervisor review, injury, hospital, city settlement and taxpayer accounting. Physical iPhone audio/performance has not been measured. Police, liability and monetary outcomes remain deliberately simplified fiction.
+
+## v0.15.0 popularity, home cleanup and sustainable accounting
+
+Doggie bags cost $6 for five. One bag clears one mess while on foot at home; use the contextual Pick up mess button or Home, loans & career. Lawn, porch and trash incidents remain until cleaned. Each mess gets two game hours of grace. HOA inspections run every three game hours while the simulation is active: fines start at $25, rise with repeated neglect and pile count, and cap at $100 per inspection. Menus normally pause time; there are no offline fines. Cleanup labor is free, clears the visible mess and reduces stress. Packs remain available through the home menu after leaving auditing.
+
+Actual views and likes now drive discovery and accumulated exposure. Reputation alone no longer automatically reveals the address. Popular videos increase the chance of the town connecting the channel to the home, subsequent property incidents, and friends/family fallout. Offscreen friends may cancel shared travel; unwanted attention can create family privacy costs. These events add relationship strain as well as clearly labeled expenses. Home cameras provide evidence, masks can defeat identification, and floodlights reduce the cost of occasional property damage. A pile alone no longer generates an automatic repair bill. Uncleared incidents are never silently discarded when the history fills.
+
+New loans: up to $100 each, $250 outstanding, four per career, three game days between advances, plus three new uploads and 150 new likes. Daily interest starts at 8% and rises by two percentage points with each new advance; fees start at $8 and rise by $4. Existing principal is retained, even if above the new limit, and cannot grow beyond the new ceiling through new borrowing. Old rates stay until another advance reprices the balance. Principal borrowing/repayment remains outside profit.
+
+The ledger now groups actual income and expenses by source. Old-save revenue/expense totals remain in explicitly labeled historical buckets rather than inventing a past breakdown. The cash-minus-debt figure, revenue, expenses, borrowing and repayment reconcile. Hospital, HOA, privacy fallout, gear, production, loan fees and interest remain separate categories.
+
+Payout mix: 45% quiet, 35% steady, 15% breakout, 5% viral. Audience outcomes stay attached to takes; changing the title or reopening the editor does not reroll them. Ad rates vary separately with the saved take, and reach still caps at 90 seconds. These are game distributions, not claims about real platforms.
+
+Balance audit (`node tools/economy-audit.mjs`): 1,000 synthetic 45-second takes, six engagement points, starter equipment, full condition, no music claim, no context cut, and no prior exposure:
+
+| Tier | Share | Mean gross ads | Mean net after upload cost | Mean home-discovery chance |
+| --- | ---: | ---: | ---: | ---: |
+| Quiet | 45% | $14.86 | $10.36 | 1.8% |
+| Steady | 35% | $35.74 | $31.24 | 2.9% |
+| Breakout | 15% | $131.20 | $126.70 | 8.0% |
+| Viral | 5% | $504.02 | $499.52 | 27.8% |
+
+These nets exclude travel, injuries, property costs, HOA fines and debt service. Short, low-engagement or claimed takes can lose money; expensive crews can erase otherwise positive margins. Context cuts increase reach and discovery risk, while serious edited-content strikes shorten the monetized career. High profits are possible; the game does not silently subtract them to force failure.
+
+Verification: complete unit suite, syntax/build, a deterministic payout audit, and mobile browser flows for HOA fines, bag purchasing, contextual cleanup, saved progress, category totals, income-funded upgrades and loan locks. No physical iPhone performance test was performed.

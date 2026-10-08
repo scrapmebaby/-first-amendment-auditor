@@ -1,4 +1,4 @@
-import { clamp, money, transaction } from './core.js';
+import { clamp, money, transaction, estimate } from './core.js';
 export const SERVICE_JOBS = [
   {
     id: 'coffee',
@@ -82,15 +82,6 @@ export function progressCareer(s) {
   const c = s.campaign;
   const notices = [];
   if (c.career !== 'auditor') return notices;
-  if (c.reputation >= 25 && !c.homeKnown) {
-    c.homeKnown = true;
-    notices.push(
-      addNotice(
-        s,
-        'Your home address has spread around the fictional town. Suddenly, you would like some privacy.',
-      ),
-    );
-  }
   if ((s.published >= 4 || c.reputation >= 45) && !c.warning) {
     c.warning = true;
     notices.push(
@@ -118,34 +109,101 @@ export function progressCareer(s) {
   }
   return notices;
 }
-export function afterUpload(s, clip, cut) {
-  const c = s.campaign;
-  c.reputation = clamp(
-    c.reputation + (cut ? 10 : 6) + Math.min(3, Math.floor(clip.drama / 4)),
+export function discoveryRisk(s, video) {
+  if (!video.views) return 0;
+  return clamp(
+    0.01 +
+      (video.views / 120000) * 0.45 +
+      (video.likes / 15000) * 0.1 +
+      (s.campaign.exposure || 0) * 0.0012,
+    0,
+    0.85,
+  );
+}
+export function backlashRisk(s, video = { views: 0 }) {
+  return clamp(
+    0.025 + (s.campaign.exposure || 0) * 0.003 + (video.views / 250000) * 0.4,
+    0.025,
+    0.7,
+  );
+}
+export function relationshipFallout(s, random = Math.random) {
+  const c = s.campaign,
+    type = random() < 0.5 ? 'friends' : 'family';
+  const severe = (c.exposure || 0) >= 50;
+  const cost = type === 'friends' ? (severe ? 30 : 12) : severe ? 45 : 18;
+  const text =
+    type === 'friends'
+      ? `Friends cancel the shared ride after being recognized through your videos. Replacement travel: ${money(cost)}. Nobody wants a cameo.`
+      : `Your fictional family receives unwanted attention linked to your channel. Privacy and phone-filtering costs: ${money(cost)}. They ask you to stop mentioning them.`;
+  transaction(
+    s,
+    -cost,
+    `Fallout: ${type === 'friends' ? 'replacement travel after canceled plans' : 'family privacy disruption'}`,
+  );
+  c.relationshipStrain = clamp((c.relationshipStrain || 0) + (severe ? 12 : 6), 0, 100);
+  c.stress = clamp(c.stress + 6, 0, 100);
+  c.fallout ??= [];
+  c.fallout.unshift({ day: s.day, type, text, cost });
+  c.fallout = c.fallout.slice(0, 12);
+  return addNotice(s, text);
+}
+export function afterUpload(s, clip, cut, video = estimate(s, clip, cut), random = Math.random) {
+  const c = s.campaign,
+    notices = [],
+    discovery = discoveryRisk(s, video);
+  c.exposure = clamp(
+    (c.exposure || 0) + Math.min(20, video.views / 2500 + video.likes / 800),
     0,
     100,
   );
-  c.stress = clamp(c.stress + 5, 0, 100);
+  c.reputation = clamp(
+    c.reputation + 1 + Math.min(12, Math.log2(video.views + 1) * 0.5) + (cut ? 2 : 0),
+    0,
+    100,
+  );
+  c.stress = clamp(c.stress + 3, 0, 100);
   if (cut && clip.drama >= 6) c.strikes++;
-  const notices = progressCareer(s);
-  if (c.homeKnown && s.published - c.lastHomeUpload >= 2) {
-    c.lastHomeUpload = s.published;
-    const incident = homeIncident(s);
-    if (incident) notices.push(incident.message);
+  if (!c.homeKnown && random() < discovery) {
+    c.homeKnown = true;
+    notices.push(
+      addNotice(
+        s,
+        `Your ${video.views.toLocaleString()}-view upload spreads your identity around the fictional town. Someone connects your channel to your home. Backlash can now reach the lawn and porch.`,
+      ),
+    );
   }
+  if (video.views >= 3000 && random() < backlashRisk(s, video)) {
+    if (c.homeKnown && random() < 0.6) {
+      const incident = homeIncident(s, random);
+      if (incident) notices.push(incident.message);
+    } else notices.push(relationshipFallout(s, random));
+  }
+  notices.push(...progressCareer(s));
   return notices;
+}
+export function ambientBacklash(s, dt, random = Math.random) {
+  const c = s.campaign;
+  if (!c.homeKnown || c.career !== 'auditor') return null;
+  c.homeClock += dt;
+  const interval = 180 - (c.exposure || 0);
+  if (c.homeClock < interval) return null;
+  c.homeClock = 0;
+  return random() < backlashRisk(s) ? homeIncident(s, random) : null;
 }
 export function loanOffer(s) {
   const c = s.campaign;
   const likes = s.likes ?? 0;
-  const limit = Math.min(300, Math.floor((s.published * 15 + likes * 0.08) / 10) * 10);
+  const limit = Math.min(250, Math.floor((s.published * 15 + likes * 0.08) / 10) * 10);
   const principal = Math.max(0, Math.min(100, Math.floor((limit - c.loanDebt) / 10) * 10));
-  const rate = Math.min(0.28, 0.03 + c.loansTaken * 0.02);
-  const fee = 5 + c.loansTaken * 3;
+  const rate = Math.min(0.28, 0.08 + c.loansTaken * 0.02);
+  const fee = 8 + c.loansTaken * 4;
   let reason = '';
   if (c.career !== 'auditor' || c.demonetized)
     reason = 'Loans require an active monetized channel.';
-  else if (c.loansTaken >= 8) reason = 'Eight loans. This lender is done.';
+  else if (c.loansTaken >= 4) reason = 'Four loans per career. This lender is done.';
+  else if (c.lastLoanDay && s.day - c.lastLoanDay < 3)
+    reason = `Next loan available on day ${c.lastLoanDay + 3}. Three game days between advances.`;
   else if (s.published - (c.lastLoanUpload ?? 0) < 3 || likes - (c.lastLoanLikes ?? 0) < 150)
     reason = 'Each loan requires 3 new uploads and 150 new likes since your last loan.';
   else if (principal < 30 || principal <= fee)
@@ -156,6 +214,7 @@ export function takeLoan(s) {
   const c = s.campaign;
   const o = loanOffer(s);
   if (!o.eligible) return { ok: false, text: o.reason };
+  c.lastLoanDay = s.day;
   c.lastLoanUpload = s.published;
   c.lastLoanLikes = s.likes ?? 0;
   c.loansTaken++;
@@ -248,14 +307,20 @@ export function repairEquipment(s) {
   c.repairs++;
   return { ok: true, text: `Equipment repaired for ${money(cost)}.` };
 }
-export function homeIncident(s) {
+export function homeIncident(s, random = Math.random) {
   const c = s.campaign;
   if (!c.homeKnown || c.career !== 'auditor') return null;
+  // Never discard an uncleared pile to make room for newer events.
+  if (c.homeIncidents.length >= 20) {
+    const removable = c.homeIncidents.findLastIndex((i) => i.cleaned);
+    if (removable < 0) return null;
+    c.homeIncidents.splice(removable, 1);
+  }
   const camera = s.gear.includes('security'),
     masked = camera && c.homeIncidents.some((i) => i.recorded),
     lights = s.gear.includes('floodlights');
   const id = c.nextHomeId++,
-    type = id % 3 === 0 ? 'trash' : 'lawn';
+    type = id % 4 === 0 ? 'porch' : id % 3 === 0 ? 'trash' : 'lawn';
   const incident = {
     id,
     day: s.day,
@@ -268,27 +333,73 @@ export function homeIncident(s) {
     clock: Math.floor(s.minutes),
   };
   c.homeIncidents.unshift(incident);
-  c.homeIncidents = c.homeIncidents.slice(0, 20);
   c.stress = clamp(c.stress + (masked ? 12 : 8), 0, 100);
   c.homeClock = 0;
-  const cost = lights ? 6 : 10;
-  transaction(s, -cost, 'Home retaliation: damaged lawn & sanitation supplies');
-  const message = masked
-    ? 'Someone in a mask shits on your lawn. Your cameras captured everything except a useful identity.'
-    : camera
-      ? 'Your home camera captures an unmasked visitor fouling the lawn. Suddenly evidence matters to you.'
-      : 'Someone fouls your lawn and disappears. No home camera, no usable recording.';
+  const cost = random() < 0.25 ? (lights ? 8 : 18) : 0;
+  if (cost) transaction(s, -cost, 'Home retaliation: damaged gate and landscaping');
+  const place = type === 'porch' ? 'porch' : type === 'trash' ? 'yard' : 'lawn';
+  const mess = type === 'trash' ? 'dumps trash' : 'leaves a pile of shit';
+  const message = `Someone ${masked ? 'in a mask ' : ''}${mess} on your ${place}. ${camera ? (masked ? 'CCTV records a covered face.' : 'CCTV identifies the visitor.') : 'No camera, no recording.'} ${cost ? `Property repairs: ${money(cost)}. ` : ''}Use a doggie bag at home before the HOA inspection.`;
   addNotice(s, message);
   return { ...incident, message };
 }
 export function cleanLawn(s) {
   const dirty = s.campaign.homeIncidents.filter((i) => !i.cleaned);
-  if (!dirty.length) return { ok: false, text: 'Your lawn is clean. Enjoy the unfamiliar peace.' };
-  const cost = dirty.length * 12;
-  transaction(s, -cost, 'Lawn cleanup: someone else’s content');
-  dirty.forEach((i) => (i.cleaned = true));
-  s.campaign.stress = clamp(s.campaign.stress - 8, 0, 100);
-  return { ok: true, text: `Lawn cleaned for ${money(cost)}. No ad revenue for this footage.` };
+  if (!dirty.length) return { ok: false, text: 'Your yard and porch are clean.' };
+  if (Math.hypot(s.x + 25, s.z - 83) > 12 || s.driving)
+    return {
+      ok: false,
+      text: 'Walk onto your home lot to pick up the mess. Mark home on the map.',
+    };
+  if (!s.cleanupBags)
+    return {
+      ok: false,
+      text: 'You need a doggie bag. A pack of five costs $6 in the shop or home menu.',
+    };
+  const incident = dirty.at(-1);
+  incident.cleaned = true;
+  s.cleanupBags--;
+  s.campaign.stress = clamp(s.campaign.stress - 2, 0, 100);
+  if (dirty.length === 1) s.campaign.hoaStreak = 0;
+  return {
+    ok: true,
+    text: `One ${incident.type === 'porch' ? 'porch' : 'yard'} mess bagged. ${dirty.length - 1} remaining. ${s.cleanupBags} bags left. No labor charge.`,
+  };
+}
+export function hoaStatus(s) {
+  const now = s.day * 1440 + s.minutes;
+  const dirty = s.campaign.homeIncidents.filter((i) => !i.cleaned);
+  const overdue = dirty.filter((i) => now - (i.day * 1440 + i.clock) >= 120);
+  const next = s.campaign.hoaNextInspection ?? (Math.floor(now / 180) + 1) * 180;
+  return {
+    dirty: dirty.length,
+    overdue: overdue.length,
+    nextIn: Math.max(0, next - now),
+    fine: Math.min(
+      100,
+      25 + 10 * (s.campaign.hoaStreak || 0) + 5 * Math.max(0, overdue.length - 1),
+    ),
+  };
+}
+export function checkHOA(s) {
+  const c = s.campaign,
+    now = s.day * 1440 + s.minutes;
+  if (c.career === 'won') return null;
+  c.hoaNextInspection ??= (Math.floor(now / 180) + 1) * 180;
+  if (now < c.hoaNextInspection) return null;
+  const status = hoaStatus(s);
+  c.hoaNextInspection = (Math.floor(now / 180) + 1) * 180;
+  if (!status.overdue) {
+    if (!status.dirty) c.hoaStreak = 0;
+    return null;
+  }
+  transaction(s, -status.fine, `HOA: ${status.overdue} neglected yard/porch messes`);
+  c.hoaFines = (c.hoaFines || 0) + status.fine;
+  c.hoaStreak = (c.hoaStreak || 0) + 1;
+  return addNotice(
+    s,
+    `HOA inspection: ${money(status.fine)} fine for neglected yard/porch mess. Two game hours of grace have passed. Clean up with doggie bags before the next inspection in three game hours.`,
+  );
 }
 export function reportHome(s, id) {
   const incident = s.campaign.homeIncidents.find((i) => i.id === id);
