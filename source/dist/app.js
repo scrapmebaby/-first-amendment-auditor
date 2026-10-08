@@ -1,3 +1,4 @@
+import { CharacterSpeech } from './voices.js';
 import { Banter } from './banter.js';
 import { TouchInput } from './touch-input.js';
 import { Controller } from './controller.js';
@@ -125,6 +126,11 @@ let keys = new Set(),
   muted = !s.sound,
   policeEvent = null,
   engageCooldown = 0;
+const characterSpeech = new CharacterSpeech();
+function syncVoices() {
+  characterSpeech.configure(s.voices === true && !muted, s.voiceVolume ?? 0.8);
+}
+syncVoices();
 const names = CAST.map((c) => `${c.name} · ${c.role.toLowerCase()}`);
 const colors = [
   '#8a9070',
@@ -181,6 +187,7 @@ let npcs = npcSpawns.map(([x, z], i) => ({
   inCustody: false,
 }));
 function resetLocals() {
+  characterSpeech.stop();
   activeBanter = null;
   conversationLines.length = 0;
   $('conversation').classList.add('hidden');
@@ -271,7 +278,7 @@ function tickBanter() {
     activeBanter = null;
     return;
   }
-  if (world.time < b.at || (b.recorded && b.turn === 1)) return;
+  if (characterSpeech.busy || world.time < b.at || (b.recorded && b.turn === 1)) return;
   const actor = b.turn % 2 === 0 ? s : b.n;
   const text = b.lines[b.turn++];
   say(actor, text);
@@ -321,6 +328,11 @@ function notify(t) {
 function say(n, text) {
   text = language(text, s.profanity);
   conversationLine(n, text);
+  syncVoices();
+  characterSpeech.speak(
+    /^OFFICER:/.test(text) ? 'officer' : n === s ? 'auditor' : `local-${n.id ?? n.name}`,
+    text,
+  );
   if (
     n.id >= 1 &&
     n.id <= CAST.length &&
@@ -1045,6 +1057,7 @@ async function showCast(index = 0) {
   }
 }
 function openModal(type, title, body) {
+  characterSpeech.stop();
   touchInput.reset();
   lookDrag = null;
   $('gameMenu').close();
@@ -1072,6 +1085,7 @@ function openModal(type, title, body) {
   if (!$('modal').open) $('modal').showModal();
 }
 function closeModal() {
+  characterSpeech.stop();
   keys.clear();
   studio?.dispose();
   studio = null;
@@ -1239,13 +1253,14 @@ function settings() {
       )
       .join(
         '',
-      )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><label class="weather-select">RESOLUTION <select id="resolutionChoice"><option value="auto">Automatic · performance friendly</option><option value="native">Native display · up to 4K</option><option value="4k">4K UHD · 3840 × 2160 at 16:9</option></select></label><label class="weather-select">COLOR <select id="gamutChoice"><option value="auto">Automatic · Display P3 when supported</option><option value="srgb">sRGB · standard color</option><option value="p3">Display P3 · wide gamut</option></select></label><p class="modal-note" id="displayStatus"></p><p class="modal-note">4K costs more GPU power and preserves your screen’s shape. On smaller screens it supersamples; it does not add physical pixels. Display P3 requires a compatible screen and browser; otherwise sRGB is used. This is wide-gamut SDR, not HDR. Display changes apply when you resume.</p><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button><button id="ambientMusic">Background music: ${s.music === false ? 'off' : 'on'}</button></div><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes birds, gusting wind, rain and occasional quiet music. Driving fades the outdoor mix down for the sputtering exhaust. Background music can be switched off separately. No accounts, trackers, real uploads, or purchases.</p>`,
+      )}</select></label><label class="weather-select">GRAPHICS <select id="graphicsChoice"><option value="cinematic">Atmospheric · volumetric light & bloom</option><option value="balanced">Balanced · lighting & shadows</option></select></label><label class="weather-select">RESOLUTION <select id="resolutionChoice"><option value="auto">Automatic · performance friendly</option><option value="native">Native display · up to 4K</option><option value="4k">4K UHD · 3840 × 2160 at 16:9</option></select></label><label class="weather-select">COLOR <select id="gamutChoice"><option value="auto">Automatic · Display P3 when supported</option><option value="srgb">sRGB · standard color</option><option value="p3">Display P3 · wide gamut</option></select></label><p class="modal-note" id="displayStatus"></p><p class="modal-note">4K costs more GPU power and preserves your screen’s shape. On smaller screens it supersamples; it does not add physical pixels. Display P3 requires a compatible screen and browser; otherwise sRGB is used. This is wide-gamut SDR, not HDR. Display changes apply when you resume.</p><div class="setting-actions"><button id="saveNow">Save now</button><button id="export">Export save ↓</button><button id="import">Import save ↑</button><button id="sound">Sound: ${muted ? 'off' : 'on'}</button><button id="ambientMusic">Background music: ${s.music === false ? 'off' : 'on'}</button></div><section class="clip"><h3>Spoken dialogue</h3><div class="setting-actions"><button id="enableVoices" ${characterSpeech.supported ? '' : 'disabled'}>${s.voices ? 'Voices: on' : 'Enable voices'}</button><button id="previewVoices" ${characterSpeech.supported ? '' : 'disabled'}>Preview character voices</button></div><label for="voiceVolume">Voice volume</label><input id="voiceVolume" type="range" min="0" max="1" step="0.05" value="${s.voiceVolume ?? 0.8}"><p class="modal-note">${characterSpeech.supported ? 'Uses your device’s available voices, assigned consistently per character. Voice quality varies by browser; some voices require internet. The speaker button mutes all audio. Captions stay on. Device speech is not included in downloaded footage.' : 'Speech is unavailable in this browser. Dialogue captions remain available.'}</p></section><input class="hidden" id="file" type="file" accept="application/json,.json"><div class="clip"><h3>Fresh start. Same questionable plan.</h3><p class="intro">Reset removes your local career, equipment, and footage. Export a backup first.</p><button id="reset" class="negative">Reset career…</button></div><p class="modal-note">Renderer: ${world.backend}. Three.js with WebGPU when available, WebGL 2 otherwise; Canvas compatibility mode on unsupported devices. Sound includes birds, gusting wind, rain and occasional quiet music. Driving fades the outdoor mix down for the sputtering exhaust. Background music can be switched off separately. No accounts, trackers, real uploads, or purchases.</p>`,
   );
   $('languageChoice').value = s.profanity ? 'explicit' : 'clean';
   $('languageChoice').onchange = (e) => {
     s.profanity = e.target.value === 'explicit';
     $('speech').textContent = language($('speech').textContent, s.profanity);
     renderConversation();
+    characterSpeech.stop();
     save();
     updateUI();
   };
@@ -1299,6 +1314,8 @@ function settings() {
       capture.stop(null);
       resetLocals();
       s = migrateSave(parsed);
+      muted = !s.sound;
+      syncVoices();
       if (!world.camera) s.viewMode = 'overhead';
       mirrorGoal = null;
       s.carSpeed = 0;
@@ -1320,6 +1337,40 @@ function settings() {
       notify('That file is not a valid game save. Your current progress is unchanged.');
     }
   };
+  $('enableVoices').onclick = () => {
+    s.voices = !s.voices;
+    if (s.voices) {
+      muted = false;
+      s.sound = true;
+    }
+    syncVoices();
+    save();
+    updateUI();
+    settings();
+    if (s.voices) {
+      characterSpeech.activate();
+      characterSpeech.speak('auditor', 'The camera is rolling. So is my mouth.');
+    }
+  };
+  $('previewVoices').onclick = () => {
+    s.voices = true;
+    s.sound = true;
+    muted = false;
+    syncVoices();
+    save();
+    updateUI();
+    $('enableVoices').textContent = 'Voices: on';
+    characterSpeech.stop();
+    characterSpeech.activate();
+    characterSpeech.speak('auditor', 'I am documenting matters of public interest.');
+    characterSpeech.speak('local-1', 'You are documenting my lunch.');
+    characterSpeech.speak('officer', 'Let us start with what happened before you hit record.');
+  };
+  $('voiceVolume').oninput = (e) => {
+    s.voiceVolume = Number(e.target.value);
+    syncVoices();
+    save();
+  };
   $('ambientMusic').onclick = () => {
     s.music = s.music === false;
     save();
@@ -1328,6 +1379,7 @@ function settings() {
   $('sound').onclick = () => {
     muted = !muted;
     s.sound = !muted;
+    syncVoices();
     if (!muted) townAudio.start();
     save();
     sound();
@@ -1339,6 +1391,8 @@ function settings() {
       capture.stop(null);
       capture.clear();
       s = fresh();
+      muted = !s.sound;
+      syncVoices();
       record = null;
       encounter = null;
       policeEvent = null;
@@ -1742,6 +1796,7 @@ function resetMotion() {
   s.carSpeed = 0;
 }
 function openGameMenu() {
+  characterSpeech.stop();
   resetMotion();
   if ($('modal').open) closeModal();
   updateUI();
@@ -2264,6 +2319,7 @@ window.addEventListener('keyup', (e) =>
   keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key),
 );
 window.addEventListener('blur', () => {
+  characterSpeech.stop();
   touchInput.reset();
   lookDrag = null;
   keys.clear();
@@ -2274,12 +2330,16 @@ document.addEventListener('visibilitychange', () => {
   lookDrag = null;
   keys.clear();
   if (document.hidden) {
+    characterSpeech.stop();
     save();
     if (capture.recorder?.state === 'recording') capture.recorder.pause();
   } else if (capture.recorder?.state === 'paused' && !menuOpen()) capture.recorder.resume();
   last = performance.now();
 });
-window.addEventListener('pagehide', save);
+window.addEventListener('pagehide', () => {
+  characterSpeech.stop();
+  save();
+});
 window.addEventListener('resize', () => {
   touchInput.reset();
   lookDrag = null;
@@ -2287,6 +2347,8 @@ window.addEventListener('resize', () => {
 // Capture also sees joystick touches, whose handlers stop bubbling. Touch release
 // is a user activation on mobile; retries cover Safari interruption/backgrounding.
 function unlockAudio() {
+  syncVoices();
+  characterSpeech.activate();
   if (!muted && townAudio.ctx?.state !== 'running') void townAudio.start();
   if (!muted && sound.ctx && sound.ctx.state !== 'running') sound.ctx.resume().catch(() => {});
 }
@@ -2295,6 +2357,7 @@ for (const event of ['pointerup', 'click', 'keydown'])
 $('soundToggle').onclick = async () => {
   muted = !muted;
   s.sound = !muted;
+  syncVoices();
   save();
   updateUI();
   if (!muted) {

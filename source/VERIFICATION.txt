@@ -226,3 +226,5 @@ v0.10.1 verification
   filtering; all existing unit/syntax checks passed before the map polish.
 
 v0.11.0 economy: unit suite and syntax checks passed. Mobile browser economy flow passed without runtime errors: cash gates, three uploads, likes, affordable microphone, eligible loan and repeat-loan lock. Saved audience outcome is stable; duration capped; legacy saves migrate; loan accounting and $300 principal cap tested. Existing unrelated visual/encounter browser scripts were not rerun for this release.
+
+v0.12.0 browser speech: unit suite/syntax/build pass; voices-browser.cjs passes on mobile-sized Chromium with an injected speech engine (preview assignments, live two-way dialogue, volume, mute, reload). No real-device listening test. Native speech audio cannot be captured by the game's canvas/WebAudio recorder; captions remain in footage.

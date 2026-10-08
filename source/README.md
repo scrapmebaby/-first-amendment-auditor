@@ -399,3 +399,11 @@ Each loan requires three new uploads and 150 new likes since the previous loan. 
 Platform review now allows a longer earning runway: 20 uploads, eight serious edited-content strikes, or reputation 90 after at least 12 uploads. A destroyed camera with no repair funds or eligible loan still unlocks the recovery career.
 
 Validation: unit suite, syntax checks, standalone build and `node tests/economy-browser.cjs` (mobile Chromium Canvas compatibility mode). The browser check exercises blocked purchases/loans, publishing, likes, an affordable upgrade and the repeat-loan lock. No physical iPhone testing was performed.
+
+## v0.12.0 browser character voices
+
+Settings → Enable voices or Preview character voices turns on device text-to-speech. Auditor, locals and officers receive consistent voice assignments, saved locally on each device; available English voices are assigned separately before being reused. Modest pitch/rate differences help when the device has few voices. Volume and enable preference travel with gameplay saves. The main speaker button mutes all game audio, including speech.
+
+Dialogue is filtered using the profanity preference before speaking. Speech has a bounded queue, pauses the next ordinary banter turn until the voice finishes, and cancels in menus, on loss of focus, or when hidden. Captions remain available. Unsupported browsers remain caption-only. Voice lists can load asynchronously. Device voices may use a network service; offline availability and voice quality vary. No application speech API, keys, account or paid backend is added. Synthesized speech is not included in downloaded gameplay recordings.
+
+Validation: complete unit suite, syntax checks, standalone build and mobile-sized Chromium integration with an injected speech engine. Tests cover activation, voice assignments, sequencing, mute, saved preferences, errors, unsupported devices and old saves. Actual audio output on iPhone Safari has not been tested.

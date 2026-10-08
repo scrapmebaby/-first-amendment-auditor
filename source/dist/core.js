@@ -123,6 +123,8 @@ export function fresh() {
     tutorial: true,
     profanity: false,
     sound: false,
+    voices: false,
+    voiceVolume: 0.8,
     music: true,
     weather: 'living',
     campaign: {
@@ -274,6 +276,12 @@ export function resolveClaim(s, e, r = Math.random()) {
   };
 }
 export function validSave(o) {
+  if (o?.voices !== undefined && typeof o.voices !== 'boolean') return false;
+  if (
+    o?.voiceVolume !== undefined &&
+    (!Number.isFinite(o.voiceVolume) || o.voiceVolume < 0 || o.voiceVolume > 1)
+  )
+    return false;
   if (o?.likes !== undefined && (!Number.isSafeInteger(o.likes) || o.likes < 0)) return false;
   if (o?.viewMode !== undefined && !['overhead', 'first'].includes(o.viewMode)) return false;
   if (o?.lookYaw !== undefined && (!Number.isFinite(o.lookYaw) || Math.abs(o.lookYaw) > Math.PI))
